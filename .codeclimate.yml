@@ -1,0 +1,17 @@
+---
+version: "2"
+checks:
+  similar-code:
+    enabled: false
+  identical-code:
+    enabled: false
+exclude_patterns:
+  - "**/.*"
+  - "**/*_test.go"
+  - "**/*.md"
+  - "LICENSE"
+  - "go.mod"
+  - "go.sum"
+engines:
+  golangci:
+    enabled: true

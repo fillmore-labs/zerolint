@@ -1,0 +1,9 @@
+---
+printWidth: 120
+proseWrap: always
+tabWidth: 4
+useTabs: false
+overrides:
+  - files: "*.md"
+    options:
+      tabWidth: 2

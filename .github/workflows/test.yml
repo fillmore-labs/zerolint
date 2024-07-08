@@ -1,0 +1,42 @@
+---
+name: Test
+"on":
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+jobs:
+    test:
+        name: Test on Go ${{ matrix.go }}
+        permissions:
+            checks: write
+            contents: read
+            pull-requests: read
+            statuses: write
+        runs-on: ubuntu-24.04
+        strategy:
+            matrix:
+                go: ["1.22", "1.21"]
+        env:
+            GOTOOLCHAIN: local
+        steps:
+            - name: ✔ Check out
+              uses: actions/checkout@v4
+            - name: 🐹 Set up Go ${{ matrix.go }}
+              uses: actions/setup-go@v5
+              with:
+                  go-version: ${{ matrix.go }}
+                  check-latest: true
+            - name: 🧸 golangci-lint
+              uses: golangci/golangci-lint-action@v6
+              with:
+                  version: v1.59.1
+            - name: 🔨 Test
+              run: go test -coverprofile=cover.out ./...
+            - name: 🧑🏻‍💻 codecov
+              uses: codecov/codecov-action@v4
+              with:
+                  files: ./cover.out
+                  token: ${{ secrets.CODECOV_TOKEN }}
