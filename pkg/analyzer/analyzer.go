@@ -40,9 +40,13 @@ var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
 func init() { //nolint:gochecknoinits
 	Analyzer.Flags.StringVar(&Excludes, "excluded", "", "read excluded types from this file")
 	Analyzer.Flags.BoolVar(&ZeroTrace, "zerotrace", false, "trace found zero-sized types")
+	Analyzer.Flags.BoolVar(&Basic, "basic", false, "basic analysis only")
 }
 
-var ZeroTrace bool //nolint:gochecknoglobals
+var (
+	ZeroTrace bool //nolint:gochecknoglobals
+	Basic     bool //nolint:gochecknoglobals
+)
 
 func run(pass *analysis.Pass) (any, error) {
 	excludes, err := ReadExcludes()
@@ -50,7 +54,12 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, err
 	}
 
-	v := visitor.Visitor{Pass: pass, Excludes: excludes, ZeroTrace: ZeroTrace}
+	v := visitor.Visitor{
+		Pass:      pass,
+		Excludes:  excludes,
+		ZeroTrace: ZeroTrace,
+		Basic:     Basic,
+	}
 	v.Run()
 
 	return any(nil), nil

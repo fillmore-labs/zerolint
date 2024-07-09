@@ -26,12 +26,5 @@ func (v Visitor) visitBinary(x *ast.BinaryExpr) bool {
 		return true
 	}
 
-	if !v.isZeroPointer(x.X) || !v.isZeroPointer(x.Y) {
-		return true
-	}
-
-	const message = "comparison of pointers to zero-size variables"
-	v.report(x.Pos(), x.End(), message, nil)
-
-	return true
+	return v.visitCmp(x, x.X, x.Y)
 }

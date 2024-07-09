@@ -20,6 +20,7 @@ Usage: `zerolint [-flag] [package]`
 Flags:
 
 - **-c** int display offending line with this many lines of context (default -1)
-- **-excluded** `<filename>` read exluded types from this file
+- **-basic** basic analysis only
+- **-excluded** `<filename>` read excluded types from this file
 - **-zerotrace** trace found zero-sized types
 - **-fix** apply all suggested fixes

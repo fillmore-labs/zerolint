@@ -42,10 +42,10 @@ func removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	return fixes
 }
 
-func (v Visitor) report(pos, end token.Pos, message string, fixes []analysis.SuggestedFix) {
+func (v Visitor) report(rng analysis.Range, message string, fixes []analysis.SuggestedFix) {
 	v.Report(analysis.Diagnostic{
-		Pos:            pos,
-		End:            end,
+		Pos:            rng.Pos(),
+		End:            rng.End(),
 		Category:       "zero-size",
 		Message:        message,
 		URL:            "https://pkg.go.dev/fillmore-labs.com/zerolint",

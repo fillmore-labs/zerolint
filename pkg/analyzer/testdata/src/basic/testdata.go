@@ -14,23 +14,43 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package basic
 
 import (
-	"testing"
-
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
+	"errors"
+	"fmt"
 )
 
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
+type nyError struct{}
 
-	analyzer.Basic = true
-	analysistest.Run(t, dir, a, "basic")
+func (*nyError) Error() string {
+	return "my error"
+}
 
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
-	analysistest.RunWithSuggestedFixes(t, dir, a, "a")
+var (
+	ErrOne = &nyError{}
+	ErrTwo = new(nyError)
+)
+
+func Exported() {
+	if errors.Is(nil, ErrOne) {
+		fmt.Println("nil")
+	}
+
+	if errors.Is(func() error { // want "comparison of pointer to zero-size variable"
+		return ErrOne
+	}(), ErrTwo) {
+		fmt.Println("equal")
+	}
+
+	var err *nyError
+	_ = errors.As(ErrOne, &err)
+
+	if ErrOne == ErrTwo { // want "comparison of pointers to zero-size variables"
+		fmt.Println("equal")
+	}
+
+	if ErrOne != ErrTwo { // want "comparison of pointers to zero-size variables"
+		fmt.Println("not equal")
+	}
 }

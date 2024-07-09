@@ -4,4 +4,4 @@ coverage:
     project: false
     patch: false
 ignore:
-  - atomic/nocopy.go
+  - main.go

@@ -17,25 +17,8 @@
 package visitor
 
 import (
-	"go/ast"
 	"go/types"
-	"log"
 )
-
-func (v Visitor) isZeroPointer(x ast.Expr) bool {
-	t := v.TypesInfo.Types[x].Type
-
-	return v.isZeroPointerType(t)
-}
-
-func (v Visitor) isZeroPointerType(t types.Type) bool {
-	p, ok := t.(*types.Pointer)
-	if !ok {
-		return false
-	}
-
-	return v.isZeroSizeType(p.Elem())
-}
 
 func (v Visitor) isZeroSizeType(t types.Type) bool {
 	if !zeroSize(t) {
@@ -47,9 +30,7 @@ func (v Visitor) isZeroSizeType(t types.Type) bool {
 		return false
 	}
 
-	if v.ZeroTrace {
-		log.Printf("found zero-size type %q", t.String())
-	}
+	v.Detected[name] = struct{}{}
 
 	return true
 }

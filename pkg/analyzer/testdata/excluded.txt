@@ -1,0 +1,2 @@
+# zerolint exclusions for a
+a.C

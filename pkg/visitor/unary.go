@@ -17,6 +17,7 @@
 package visitor
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 )
@@ -31,9 +32,9 @@ func (v Visitor) visitUnary(x *ast.UnaryExpr) bool {
 		return true
 	}
 
+	message := fmt.Sprintf("address of zero-size variable of type %q", t.String())
 	fixes := removeOp(x, x.X)
-	const message = "address of zero-size variable"
-	v.report(x.Pos(), x.End(), message, fixes)
+	v.report(x, message, fixes)
 
 	return fixes == nil
 }

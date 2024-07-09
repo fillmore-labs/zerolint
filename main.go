@@ -14,13 +14,72 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// This is the main program for the zerolint linter.
 package main
 
 import (
+	"flag"
+	"fmt"
+	"os"
+	"runtime/debug"
+
 	"fillmore-labs.com/zerolint/pkg/analyzer"
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
 func main() {
+	a := analyzer.Analyzer
+	addVersionFlag(&a.Flags)
 	singlechecker.Main(analyzer.Analyzer)
+}
+
+func addVersionFlag(s *flag.FlagSet) {
+	if s.Lookup("V") == nil {
+		s.Var(versionFlag{}, "V", "print version and exit")
+	}
+}
+
+type versionFlag struct{}
+
+func (versionFlag) IsBoolFlag() bool { return true }
+func (versionFlag) Get() any         { return nil }
+func (versionFlag) String() string   { return "" }
+func (versionFlag) Set(_ string) error {
+	progname, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	var goVersion, version, revision, time string
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		goVersion = bi.GoVersion
+		version = bi.Main.Version
+		var modified string
+		for _, s := range bi.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				revision = s.Value
+
+			case "vcs.time":
+				time = s.Value
+
+			case "vcs.modified":
+				modified = s.Value
+			}
+		}
+
+		if len(revision) > 6 { //nolint:mnd
+			revision = revision[:7]
+			if len(modified) > 0 {
+				revision += " (dirty)"
+			}
+		}
+	}
+
+	fmt.Printf("%s version %s build with %s from %s on %s\n",
+		progname, version, goVersion, revision, time)
+
+	os.Exit(0)
+
+	return nil
 }

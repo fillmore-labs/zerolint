@@ -17,25 +17,33 @@
 package visitor
 
 import (
+	"fmt"
 	"go/ast"
+	"go/types"
 )
 
 func (v Visitor) visitStar(x *ast.StarExpr) bool {
-	var message string
 	t := v.TypesInfo.Types[x.X].Type
+	var message string
+
+	p, ok := t.Underlying().(*types.Pointer)
 	switch {
-	case v.isZeroPointerType(t):
-		message = "pointer to zero-size variable"
+	case ok:
+		e := p.Elem()
+		if !v.isZeroSizeType(p.Elem()) {
+			return true
+		}
+		message = fmt.Sprintf("pointer to zero-size variable of type %q", e.String())
 
 	case v.isZeroSizeType(t):
-		message = "pointer to zero-size type"
+		message = fmt.Sprintf("pointer to zero-size type %q", t.String())
 
 	default:
 		return true
 	}
 
 	fixes := removeOp(x, x.X)
-	v.report(x.Pos(), x.End(), message, fixes)
+	v.report(x, message, fixes)
 
 	return fixes == nil
 }

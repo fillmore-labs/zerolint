@@ -18,6 +18,7 @@ package visitor
 
 import (
 	"go/ast"
+	"log"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -27,20 +28,58 @@ import (
 type Visitor struct {
 	*analysis.Pass
 	Excludes  map[string]struct{}
+	Detected  map[string]struct{}
 	ZeroTrace bool
+	Basic     bool
 }
 
 func (v Visitor) Run() {
-	in := v.ResultOf[inspect.Analyzer].(*inspector.Inspector) //nolint:forcetypeassert
-
-	types := []ast.Node{
-		(*ast.StarExpr)(nil),
-		(*ast.UnaryExpr)(nil),
-		(*ast.BinaryExpr)(nil),
-		(*ast.CallExpr)(nil),
+	in, ok := v.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	if !ok {
+		log.Fatal("inspector result missing")
 	}
 
-	in.Nodes(types, v.visit)
+	v.Excludes["runtime.Func"] = struct{}{}
+	v.Detected = make(map[string]struct{})
+
+	if v.Basic {
+		types := []ast.Node{
+			(*ast.BinaryExpr)(nil),
+			(*ast.CallExpr)(nil),
+		}
+		in.Nodes(types, v.visitBasic)
+	} else {
+		types := []ast.Node{
+			(*ast.StarExpr)(nil),
+			(*ast.UnaryExpr)(nil),
+			(*ast.BinaryExpr)(nil),
+			(*ast.CallExpr)(nil),
+		}
+		in.Nodes(types, v.visit)
+	}
+
+	if v.ZeroTrace {
+		for name := range v.Detected {
+			log.Printf("found zero-size type %q", name)
+		}
+	}
+}
+
+func (v Visitor) visitBasic(n ast.Node, push bool) bool {
+	if !push {
+		return true
+	}
+
+	switch x := n.(type) {
+	case *ast.BinaryExpr:
+		return v.visitBinary(x)
+
+	case *ast.CallExpr:
+		return v.visitCallBasic(x)
+
+	default:
+		return true
+	}
 }
 
 func (v Visitor) visit(n ast.Node, push bool) bool {
