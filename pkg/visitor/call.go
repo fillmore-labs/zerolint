@@ -27,7 +27,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-func (v Visitor) visitCallBasic(x *ast.CallExpr) bool { // only [errors.Is]
+func (v Visitor) visitCallBasic(x *ast.CallExpr) bool {
 	if len(x.Args) != 2 { //nolint:mnd
 		return true
 	}
@@ -35,33 +35,37 @@ func (v Visitor) visitCallBasic(x *ast.CallExpr) bool { // only [errors.Is]
 		return true
 	}
 
+	// errors.Is(..., ...)
 	return v.visitCmp(x, x.Args[0], x.Args[1])
 }
 
 func (v Visitor) visitCall(x *ast.CallExpr) bool {
-	tF := v.TypesInfo.Types[x.Fun]
-	if tF.IsType() { // check for type casts
-		return v.visitCast(x, tF.Type)
+	funType := v.TypesInfo.Types[x.Fun]
+	if funType.IsType() { // check for type casts
+		// (T)(...)
+		return v.visitCast(x, funType.Type)
 	}
 
-	switch f := unwrap(x.Fun).(type) {
-	case *ast.SelectorExpr: // check for [errors.Is]
-		if len(x.Args) != 2 || !v.isErrorsIs(f) {
+	switch fun := unwrap(x.Fun).(type) {
+	case *ast.SelectorExpr:
+		if len(x.Args) != 2 || !v.isErrorsIs(fun) {
 			return true
 		}
 
+		// errors.Is(..., ...)
 		return v.visitCmp(x, x.Args[0], x.Args[1])
 
-	case *ast.Ident: // check for [builtin.new]
-		if !tF.IsBuiltin() || f.Name != "new" || len(x.Args) != 1 {
+	case *ast.Ident:
+		if !funType.IsBuiltin() || fun.Name != "new" || len(x.Args) != 1 {
 			return true
 		}
 
-		a := x.Args[0]
-		tA := v.TypesInfo.Types[a].Type
-		if v.isZeroSizeType(tA) {
-			message := fmt.Sprintf("new called on zero-size type %q", tA.String())
-			fixes := makePure(x, a)
+		// new(...)
+		arg := x.Args[0]
+		argType := v.TypesInfo.Types[arg].Type
+		if v.isZeroSizeType(argType) {
+			message := fmt.Sprintf("new called on zero-size type %q", argType)
+			fixes := makePure(x, arg)
 			v.report(x, message, fixes)
 
 			return false
@@ -75,19 +79,20 @@ func (v Visitor) isErrorsIs(f *ast.SelectorExpr) bool {
 	if f.Sel.Name != "Is" {
 		return false
 	}
-	path, ok := v.pkgImportPath(f.X)
 
-	return ok && (path == "errors" || path == "golang.org/x/exp/errors")
-}
-
-func (v Visitor) pkgImportPath(x ast.Expr) (path string, ok bool) {
-	if id, ok1 := x.(*ast.Ident); ok1 {
-		if pkg, ok2 := v.TypesInfo.Uses[id].(*types.PkgName); ok2 {
-			return pkg.Imported().Path(), true
-		}
+	id, ok := f.X.(*ast.Ident)
+	if !ok {
+		return false
 	}
 
-	return "", false
+	pkg, ok := v.TypesInfo.Uses[id].(*types.PkgName)
+	if !ok {
+		return false
+	}
+
+	path := pkg.Imported().Path()
+
+	return path == "errors" || path == "golang.org/x/exp/errors"
 }
 
 func (v Visitor) visitCast(x *ast.CallExpr, t types.Type) bool {
@@ -96,21 +101,18 @@ func (v Visitor) visitCast(x *ast.CallExpr, t types.Type) bool {
 	}
 
 	p, ok := t.Underlying().(*types.Pointer)
-	if !ok {
+	if !ok || !v.isZeroSizeType(p.Elem()) {
 		return true
 	}
 
-	e := p.Elem()
-	if !v.isZeroSizeType(e) {
-		return true
-	}
+	// (*...)(nil)
+	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", p.Elem())
 
 	var fixes []analysis.SuggestedFix
 	if s, ok2 := unwrap(x.Fun).(*ast.StarExpr); ok2 {
 		fixes = makePure(x, s.X)
 	}
 
-	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", e.String())
 	v.report(x, message, fixes)
 
 	return fixes == nil

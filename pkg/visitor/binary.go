@@ -26,5 +26,6 @@ func (v Visitor) visitBinary(x *ast.BinaryExpr) bool {
 		return true
 	}
 
+	// X == Y or X != Y
 	return v.visitCmp(x, x.X, x.Y)
 }

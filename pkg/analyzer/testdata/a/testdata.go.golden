@@ -19,6 +19,8 @@ package a
 import (
 	"errors"
 	"fmt"
+
+	xerrors "golang.org/x/exp/errors"
 )
 
 type empty struct{}
@@ -49,15 +51,18 @@ func Exported() {
 	var x [0]string
 	var y [0]string
 
-	if errors.Is(nil, ErrOne) {
+	if errors.Is(ErrOne, nil) {
 		fmt.Println("nil")
 	}
 
-	if myErrs.Is(ErrOne, ErrTwo) {
-		fmt.Println("nil")
-	}
+	func() {
+		errors := myErrs
+		if errors.Is(ErrOne, ErrTwo) {
+			fmt.Println("one is two")
+		}
+	}()
 
-	if errors.Is(func() error { // want "comparison of pointer to zero-size variable"
+	if xerrors.Is(func() error { // want "comparison of pointer to zero-size variable"
 		return ErrOne
 	}(), ErrTwo) {
 		fmt.Println("equal")
@@ -116,7 +121,9 @@ func Ptr[T any](v T) *T { return &v }
 
 type greeter [5][5]struct{}
 
-func (g greeter) String() string { // want "pointer to zero-size type"
+type greeterAlias = greeter // want "pointer to zero-size type"
+
+func (g greeterAlias) String() string {
 	return "hello, world"
 }
 

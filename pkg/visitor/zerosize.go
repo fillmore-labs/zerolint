@@ -54,6 +54,24 @@ func zeroSize(t types.Type) bool {
 
 		return true
 
+		/* not really useful and doesn't work with '-fix':
+		case *types.Interface:
+			for i := 0; i < x.NumEmbeddeds(); i++ {
+				if zeroSize(x.EmbeddedType(i)) {
+					return true
+				}
+			}
+			return false
+
+		case *types.Union:
+			for i := 0; i < x.Len(); i++ {
+				if !zeroSize(x.Term(i).Type()) {
+					return false
+				}
+			}
+			return true
+		*/
+
 	default:
 		return false
 	}

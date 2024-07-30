@@ -24,7 +24,7 @@ import (
 
 func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool { //nolint:cyclop
 	var p [2]struct {
-		name          string
+		elem          types.Type
 		isZeroPointer bool
 		isInterface   bool
 	}
@@ -36,29 +36,28 @@ func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool { //nolint:cyclop
 		}
 		switch x := t.Type.Underlying().(type) {
 		case *types.Pointer:
-			e := x.Elem()
-			p[i].name = e.String()
-			p[i].isZeroPointer = v.isZeroSizeType(e)
+			p[i].elem = x.Elem()
+			p[i].isZeroPointer = v.isZeroSizeType(x.Elem())
 
 		case *types.Interface:
-			p[i].name = t.Type.String()
+			p[i].elem = t.Type
 			p[i].isInterface = true
 
 		default:
-			p[i].name = t.Type.String()
+			p[i].elem = t.Type
 		}
 	}
 
 	var message string
 	switch {
 	case p[0].isZeroPointer && p[1].isZeroPointer:
-		message = comparisonMessage(p[0].name, p[1].name)
+		message = comparisonMessage(p[0].elem, p[1].elem)
 
 	case p[0].isZeroPointer:
-		message = comparisonIMessage(p[0].name, p[1].name, p[1].isInterface)
+		message = comparisonIMessage(p[0].elem, p[1].elem, p[1].isInterface)
 
 	case p[1].isZeroPointer:
-		message = comparisonIMessage(p[1].name, p[0].name, p[0].isInterface)
+		message = comparisonIMessage(p[1].elem, p[0].elem, p[0].isInterface)
 
 	default:
 		return true
@@ -69,7 +68,7 @@ func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool { //nolint:cyclop
 	return true
 }
 
-func comparisonMessage(xType, yType string) string {
+func comparisonMessage(xType, yType types.Type) string {
 	if xType == yType {
 		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", xType)
 	}
@@ -77,7 +76,7 @@ func comparisonMessage(xType, yType string) string {
 	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q", xType, yType)
 }
 
-func comparisonIMessage(zType, withType string, isInterface bool) string {
+func comparisonIMessage(zType, withType types.Type, isInterface bool) string {
 	var isIf string
 	if isInterface {
 		isIf = "interface "

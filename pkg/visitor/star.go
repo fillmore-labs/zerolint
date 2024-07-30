@@ -23,22 +23,18 @@ import (
 )
 
 func (v Visitor) visitStar(x *ast.StarExpr) bool {
+	// *...
 	t := v.TypesInfo.Types[x.X].Type
 	var message string
 
-	p, ok := t.Underlying().(*types.Pointer)
-	switch {
-	case ok:
-		e := p.Elem()
+	if p, ok := t.Underlying().(*types.Pointer); ok {
 		if !v.isZeroSizeType(p.Elem()) {
 			return true
 		}
-		message = fmt.Sprintf("pointer to zero-size variable of type %q", e.String())
-
-	case v.isZeroSizeType(t):
-		message = fmt.Sprintf("pointer to zero-size type %q", t.String())
-
-	default:
+		message = fmt.Sprintf("pointer to zero-size variable of type %q", p.Elem())
+	} else if v.isZeroSizeType(t) {
+		message = fmt.Sprintf("pointer to zero-size type %q", t)
+	} else {
 		return true
 	}
 
