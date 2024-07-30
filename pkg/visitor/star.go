@@ -33,10 +33,10 @@ func (v Visitor) visitStar(x *ast.StarExpr) bool {
 		if !v.isZeroSizeType(p.Elem()) {
 			return true
 		}
-		message = fmt.Sprintf("pointer to zero-size variable of type %q", e.String())
+		message = fmt.Sprintf("pointer to zero-size variable of type %q", e)
 
 	case v.isZeroSizeType(t):
-		message = fmt.Sprintf("pointer to zero-size type %q", t.String())
+		message = fmt.Sprintf("pointer to zero-size type %q", t)
 
 	default:
 		return true

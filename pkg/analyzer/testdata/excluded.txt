@@ -1,2 +1,2 @@
-# zerolint exclusions for a
-a.C
+# zerolint exclusions for go.test/a
+go.test/a.C

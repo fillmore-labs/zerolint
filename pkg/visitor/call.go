@@ -60,7 +60,7 @@ func (v Visitor) visitCall(x *ast.CallExpr) bool {
 		a := x.Args[0]
 		tA := v.TypesInfo.Types[a].Type
 		if v.isZeroSizeType(tA) {
-			message := fmt.Sprintf("new called on zero-size type %q", tA.String())
+			message := fmt.Sprintf("new called on zero-size type %q", tA)
 			fixes := makePure(x, a)
 			v.report(x, message, fixes)
 
@@ -75,19 +75,20 @@ func (v Visitor) isErrorsIs(f *ast.SelectorExpr) bool {
 	if f.Sel.Name != "Is" {
 		return false
 	}
-	path, ok := v.pkgImportPath(f.X)
 
-	return ok && (path == "errors" || path == "golang.org/x/exp/errors")
-}
-
-func (v Visitor) pkgImportPath(x ast.Expr) (path string, ok bool) {
-	if id, ok1 := x.(*ast.Ident); ok1 {
-		if pkg, ok2 := v.TypesInfo.Uses[id].(*types.PkgName); ok2 {
-			return pkg.Imported().Path(), true
-		}
+	id, ok := f.X.(*ast.Ident)
+	if !ok {
+		return false
 	}
 
-	return "", false
+	pkg, ok := v.TypesInfo.Uses[id].(*types.PkgName)
+	if !ok {
+		return false
+	}
+
+	path := pkg.Imported().Path()
+
+	return path == "errors" || path == "golang.org/x/exp/errors"
 }
 
 func (v Visitor) visitCast(x *ast.CallExpr, t types.Type) bool {
@@ -110,7 +111,7 @@ func (v Visitor) visitCast(x *ast.CallExpr, t types.Type) bool {
 		fixes = makePure(x, s.X)
 	}
 
-	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", e.String())
+	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", e)
 	v.report(x, message, fixes)
 
 	return fixes == nil

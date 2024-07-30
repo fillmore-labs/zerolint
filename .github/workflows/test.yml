@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        go: ["1.22", "1.21"]
+        go: ["1.23.0-rc.2", "1.22", "1.21"]
     env:
       GOTOOLCHAIN: local
     steps:
@@ -33,8 +33,11 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.59.1
+        if: matrix.go != '1.23.0-rc.2'
       - name: 🔨 Test
-        run: go test -coverprofile=cover.out ./...
+        run: |
+          go get -C ./pkg/analyzer/testdata golang.org/x/exp/errors
+          go test -coverprofile=cover.out ./...
       - name: 🧑🏻‍💻 codecov
         uses: codecov/codecov-action@v4
         with:
