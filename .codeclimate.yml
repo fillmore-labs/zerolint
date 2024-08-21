@@ -5,6 +5,8 @@ checks:
     enabled: false
   identical-code:
     enabled: false
+  return-statements:
+    enabled: false
 exclude_patterns:
   - "**/.*"
   - "**/*_test.go"

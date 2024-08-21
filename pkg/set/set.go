@@ -14,29 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package visitor
+package set
 
-import (
-	"fmt"
-	"go/ast"
-	"go/token"
-)
+// Set is a collection of unique elements of type T.
+// It is implemented using a map with values of an empty struct.
+type Set[T comparable] map[T]struct{}
 
-// visitUnary checks expressions in form &x.
-func (v Visitor) visitUnary(x *ast.UnaryExpr) bool {
-	if x.Op != token.AND {
-		return true
-	}
+// New returns a new empty set of type T.
+func New[T comparable]() Set[T] {
+	return make(Set[T])
+}
 
-	// &...
-	t := v.TypesInfo.Types[x.X].Type
-	if !v.isZeroSizedType(t) {
-		return true
-	}
+// Insert adds the element t to the set s.
+// If t is already in s, it does nothing.
+func (s Set[T]) Insert(t T) {
+	s[t] = struct{}{}
+}
 
-	message := fmt.Sprintf("address of zero-size variable of type %q", t)
-	fixes := removeOp(x, x.X)
-	v.report(x, message, fixes)
+// Has returns true if the element t is in the set s, false otherwise.
+func (s Set[T]) Has(t T) bool {
+	_, ok := s[t]
 
-	return fixes == nil
+	return ok
 }

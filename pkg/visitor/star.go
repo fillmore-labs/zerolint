@@ -22,18 +22,20 @@ import (
 	"go/types"
 )
 
+// visitUnary checks expressions in form *x.
 func (v Visitor) visitStar(x *ast.StarExpr) bool {
 	// *...
 	t := v.TypesInfo.Types[x.X].Type
 	var message string
-
 	if p, ok := t.Underlying().(*types.Pointer); ok {
-		if !v.isZeroSizeType(p.Elem()) {
+		if !v.isZeroSizedType(p.Elem()) {
 			return true
 		}
+		// *t where t is a pointer to a zero-size variable.
 		message = fmt.Sprintf("pointer to zero-size variable of type %q", p.Elem())
-	} else if v.isZeroSizeType(t) {
-		message = fmt.Sprintf("pointer to zero-size type %q", t)
+	} else if v.isZeroSizedType(t) {
+		// *t where t is a zero-sized type.
+		message = fmt.Sprintf("pointer to zero-sized type %q", t)
 	} else {
 		return true
 	}

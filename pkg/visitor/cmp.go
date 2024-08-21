@@ -22,30 +22,22 @@ import (
 	"go/types"
 )
 
-func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool { //nolint:cyclop
-	var p [2]struct {
-		elem          types.Type
-		isZeroPointer bool
-		isInterface   bool
-	}
+// comparisonInfo holds type information for comparison operands.
+type comparisonInfo struct {
+	elem          types.Type
+	isZeroPointer bool
+	isInterface   bool
+}
 
+// visitCmp checks comparisons like x == y, x != y and errors.Is(x, y).
+func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
+	var p [2]comparisonInfo
 	for i, z := range []ast.Expr{x, y} {
 		t := v.TypesInfo.Types[z]
 		if t.IsNil() {
 			return true
 		}
-		switch x := t.Type.Underlying().(type) {
-		case *types.Pointer:
-			p[i].elem = x.Elem()
-			p[i].isZeroPointer = v.isZeroSizeType(x.Elem())
-
-		case *types.Interface:
-			p[i].elem = t.Type
-			p[i].isInterface = true
-
-		default:
-			p[i].elem = t.Type
-		}
+		p[i] = v.getComparisonInfo(t.Type)
 	}
 
 	var message string
@@ -65,17 +57,40 @@ func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool { //nolint:cyclop
 
 	v.report(n, message, nil)
 
+	// no fixes, so dive deeper.
 	return true
 }
 
+// getComparisonInfo extracts relevant type information for comparison.
+func (v Visitor) getComparisonInfo(t types.Type) comparisonInfo {
+	var info comparisonInfo
+
+	switch underlying := t.Underlying().(type) {
+	case *types.Pointer:
+		info.elem = underlying.Elem()
+		info.isZeroPointer = v.isZeroSizedType(info.elem)
+
+	case *types.Interface:
+		info.elem = t
+		info.isInterface = true
+
+	default:
+		info.elem = t
+	}
+
+	return info
+}
+
+// comparisonMessage determines the appropriate message for comparison of two pointers.
 func comparisonMessage(xType, yType types.Type) string {
-	if xType == yType {
+	if types.Identical(xType, yType) {
 		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", xType)
 	}
 
 	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q", xType, yType)
 }
 
+// comparisonIMessage determines the appropriate message for pointer comparison.
 func comparisonIMessage(zType, withType types.Type, isInterface bool) string {
 	var isIf string
 	if isInterface {

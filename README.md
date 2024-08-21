@@ -7,7 +7,7 @@
 [![Go Report Card](https://goreportcard.com/badge/fillmore-labs.com/zerolint)](https://goreportcard.com/report/fillmore-labs.com/zerolint)
 [![License](https://img.shields.io/github/license/fillmore-labs/zerolint)](https://www.apache.org/licenses/LICENSE-2.0)
 
-The `zerolint` linter checks usage patterns of pointers to zero-sized variables in Go.
+The `zerolint` linter checks usage patterns of pointers to zero-size variables in Go.
 
 ## Usage
 

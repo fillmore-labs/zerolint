@@ -21,15 +21,15 @@ import (
 	"fmt"
 )
 
-type nyError struct{}
+type myError struct{}
 
-func (*nyError) Error() string {
+func (*myError) Error() string { // want "method receiver is pointer to zero-size variable"
 	return "my error"
 }
 
 var (
-	ErrOne = &nyError{}
-	ErrTwo = new(nyError)
+	ErrOne = &myError{}
+	ErrTwo = new(myError)
 )
 
 func Exported() {
@@ -43,7 +43,7 @@ func Exported() {
 		fmt.Println("equal")
 	}
 
-	var err *nyError
+	var err *myError
 	_ = errors.As(ErrOne, &err)
 
 	if ErrOne == ErrTwo { // want "comparison of pointers to zero-size variables"
@@ -54,3 +54,11 @@ func Exported() {
 		fmt.Println("not equal")
 	}
 }
+
+type D struct{ _ int }
+
+func (*D) String() string {
+	return "hello, world"
+}
+
+var _ fmt.Stringer = (*D)(nil)

@@ -14,40 +14,29 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package visitor
 
 import (
-	"bufio"
-	"os"
-
-	"fillmore-labs.com/zerolint/pkg/set"
+	"fmt"
+	"go/ast"
 )
 
-// ReadExcludes reads zero-sized types excluded from analysis from a file and returns them as a set.
-func ReadExcludes(name string) (set.Set[string], error) {
-	excludes := set.New[string]()
-
-	if Excludes == "" {
-		return excludes, nil
+// visitFunc checks if the function declaration has a receiver of a pointer to a zero-sized type.
+func (v Visitor) visitFunc(x *ast.FuncDecl) bool {
+	// Only process methods.
+	if x.Recv == nil || len(x.Recv.List) != 1 {
+		return true
 	}
 
-	file, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		expr := scanner.Bytes()
-		if len(expr) == 0 || expr[0] == '#' {
-			continue
-		}
-		excludes.Insert(string(expr))
-	}
-	if err2 := scanner.Err(); err2 != nil {
-		return nil, err2
+	recv := x.Recv.List[0]
+	recvType := v.TypesInfo.Types[recv.Type].Type
+	elem, ok := v.zeroSizedTypePointer(recvType)
+	if !ok { // Not a pointer receiver or no pointer to a zero-sized type.
+		return true
 	}
 
-	return excludes, nil
+	message := fmt.Sprintf("method receiver is pointer to zero-size variable of type %q", elem)
+	v.report(recv, message, nil)
+
+	return true
 }

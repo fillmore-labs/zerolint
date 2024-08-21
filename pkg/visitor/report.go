@@ -25,23 +25,28 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// removeOp suggests a fix that removes the operator from the given expression.
 func removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
-	var fixes []analysis.SuggestedFix
 	var buf bytes.Buffer
-	if err := format.Node(&buf, token.NewFileSet(), x); err == nil {
-		edit := analysis.TextEdit{
-			Pos:     n.Pos(),
-			End:     n.End(),
-			NewText: buf.Bytes(),
-		}
-		fixes = []analysis.SuggestedFix{
-			{Message: "change to pure type", TextEdits: []analysis.TextEdit{edit}},
-		}
+	if err := format.Node(&buf, token.NewFileSet(), x); err != nil {
+		return nil
 	}
 
-	return fixes
+	edit := analysis.TextEdit{
+		Pos:     n.Pos(),
+		End:     n.End(),
+		NewText: buf.Bytes(),
+	}
+
+	return []analysis.SuggestedFix{
+		{
+			Message:   "change to pure type",
+			TextEdits: []analysis.TextEdit{edit},
+		},
+	}
 }
 
+// report adds a diagnostic message to the analysis pass.
 func (v Visitor) report(rng analysis.Range, message string, fixes []analysis.SuggestedFix) {
 	v.Report(analysis.Diagnostic{
 		Pos:            rng.Pos(),

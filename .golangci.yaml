@@ -6,6 +6,7 @@ linters:
   disable:
     # deprecated
     - execinquery
+    - exportloopref
     - gomnd
     # disabled
     - depguard
@@ -16,9 +17,6 @@ linters:
     - varnamelen
     - wrapcheck
     - wsl
-    # Go 1.22
-    - copyloopvar
-    - intrange
 linters-settings:
   govet:
     enable-all: true

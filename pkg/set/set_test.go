@@ -14,40 +14,39 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package set_test
 
 import (
-	"bufio"
-	"os"
+	"testing"
 
-	"fillmore-labs.com/zerolint/pkg/set"
+	. "fillmore-labs.com/zerolint/pkg/set"
 )
 
-// ReadExcludes reads zero-sized types excluded from analysis from a file and returns them as a set.
-func ReadExcludes(name string) (set.Set[string], error) {
-	excludes := set.New[string]()
+func TestSet(t *testing.T) {
+	t.Parallel()
 
-	if Excludes == "" {
-		return excludes, nil
-	}
+	// given
+	s := New[int]()
 
-	file, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+	// when
+	s.Insert(1)
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		expr := scanner.Bytes()
-		if len(expr) == 0 || expr[0] == '#' {
-			continue
-		}
-		excludes.Insert(string(expr))
+	// then
+	if !s.Has(1) {
+		t.Error("Expected 1 to be set")
 	}
-	if err2 := scanner.Err(); err2 != nil {
-		return nil, err2
-	}
+}
 
-	return excludes, nil
+func TestUnset(t *testing.T) {
+	t.Parallel()
+
+	// given
+	s := New[int]()
+
+	// when
+
+	// then
+	if s.Has(1) {
+		t.Error("Expected 1 to be unset")
+	}
 }

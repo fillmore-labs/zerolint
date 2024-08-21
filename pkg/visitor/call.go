@@ -27,60 +27,48 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// visitCallBasic checks for errors.Is(x, y) and errors.As(x, y).
 func (v Visitor) visitCallBasic(x *ast.CallExpr) bool {
 	if len(x.Args) != 2 { //nolint:mnd
 		return true
 	}
-	if s, ok := unwrap(x.Fun).(*ast.SelectorExpr); !ok || !v.isErrorsIs(s) {
+	fun, ok := unwrap(x.Fun).(*ast.SelectorExpr)
+	if !ok || !v.isErrors(fun.X) {
 		return true
 	}
 
-	// errors.Is(..., ...)
-	return v.visitCmp(x, x.Args[0], x.Args[1])
-}
-
-func (v Visitor) visitCall(x *ast.CallExpr) bool {
-	funType := v.TypesInfo.Types[x.Fun]
-	if funType.IsType() { // check for type casts
-		// (T)(...)
-		return v.visitCast(x, funType.Type)
-	}
-
-	switch fun := unwrap(x.Fun).(type) {
-	case *ast.SelectorExpr:
-		if len(x.Args) != 2 || !v.isErrorsIs(fun) {
-			return true
-		}
-
-		// errors.Is(..., ...)
-		return v.visitCmp(x, x.Args[0], x.Args[1])
-
-	case *ast.Ident:
-		if !funType.IsBuiltin() || fun.Name != "new" || len(x.Args) != 1 {
-			return true
-		}
-
-		// new(...)
-		arg := x.Args[0]
-		argType := v.TypesInfo.Types[arg].Type
-		if v.isZeroSizeType(argType) {
-			message := fmt.Sprintf("new called on zero-size type %q", argType)
-			fixes := makePure(x, arg)
-			v.report(x, message, fixes)
-
-			return false
-		}
-	}
-
-	return true
-}
-
-func (v Visitor) isErrorsIs(f *ast.SelectorExpr) bool {
-	if f.Sel.Name != "Is" {
+	if fun.Sel.Name == "As" { // Do not report pointers in errors.As(..., ...).
 		return false
 	}
 
-	id, ok := f.X.(*ast.Ident)
+	if fun.Sel.Name != "Is" {
+		return true
+	}
+
+	// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
+	return v.visitCmp(x, x.Args[0], x.Args[1])
+}
+
+// visitCall checks for type casts T(x), errors.Is(x, y), errors.As(x, y) and new(T).
+func (v Visitor) visitCall(x *ast.CallExpr) bool {
+	switch funType := v.TypesInfo.Types[x.Fun]; {
+	case funType.IsType(): // Check for type casts T(...).
+		return v.visitCast(funType.Type, x)
+
+	case funType.IsBuiltin(): // Check for calls to new(T).
+		return v.visitNew(x)
+
+	case funType.IsValue(): // Check for errors.Is(x, y) and errors.As(x, y).
+		return v.visitCallBasic(x)
+
+	default:
+		return true
+	}
+}
+
+// isErrors checks whether the expression is a package specifier for errors or golang.org/x/exp/errors.
+func (v Visitor) isErrors(x ast.Expr) bool {
+	id, ok := x.(*ast.Ident)
 	if !ok {
 		return false
 	}
@@ -95,19 +83,18 @@ func (v Visitor) isErrorsIs(f *ast.SelectorExpr) bool {
 	return path == "errors" || path == "golang.org/x/exp/errors"
 }
 
-func (v Visitor) visitCast(x *ast.CallExpr, t types.Type) bool {
+// visitCast is called for type casts T(nil).
+func (v Visitor) visitCast(t types.Type, x *ast.CallExpr) bool {
 	if len(x.Args) != 1 || !v.TypesInfo.Types[x.Args[0]].IsNil() {
 		return true
 	}
 
-	p, ok := t.Underlying().(*types.Pointer)
-	if !ok || !v.isZeroSizeType(p.Elem()) {
+	elem, ok := v.zeroSizedTypePointer(t)
+	if !ok { // Not a pointer to a zero-sized type.
 		return true
 	}
 
-	// (*...)(nil)
-	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", p.Elem())
-
+	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", elem)
 	var fixes []analysis.SuggestedFix
 	if s, ok2 := unwrap(x.Fun).(*ast.StarExpr); ok2 {
 		fixes = makePure(x, s.X)
@@ -118,29 +105,60 @@ func (v Visitor) visitCast(x *ast.CallExpr, t types.Type) bool {
 	return fixes == nil
 }
 
+// visitCast is called for calls to new(T).
+func (v Visitor) visitNew(x *ast.CallExpr) bool {
+	if len(x.Args) != 1 {
+		return true
+	}
+	fun, ok := unwrap(x.Fun).(*ast.Ident)
+	if !ok || fun.Name != "new" {
+		return true
+	}
+
+	arg := x.Args[0] // new(arg).
+	argType := v.TypesInfo.Types[arg].Type
+	if !v.isZeroSizedType(argType) {
+		return true
+	}
+
+	message := fmt.Sprintf("new called on zero-sized type %q", argType)
+	fixes := makePure(x, arg)
+	v.report(x, message, fixes)
+
+	return false
+}
+
+// unwrap removes parentheses from an expression (x).
 func unwrap(e ast.Expr) ast.Expr {
 	x := e
-	for p, ok := x.(*ast.ParenExpr); ok; p, ok = x.(*ast.ParenExpr) {
+	for {
+		p, ok := x.(*ast.ParenExpr)
+		if !ok {
+			break
+		}
 		x = p.X
 	}
 
 	return x
 }
 
+// makePure adds a suggested fix from (*T)(nil) or new(T) to T{}.
 func makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
-	var fixes []analysis.SuggestedFix
 	var buf bytes.Buffer
-	if err := format.Node(&buf, token.NewFileSet(), x); err == nil {
-		buf.WriteString("{}")
-		edit := analysis.TextEdit{
-			Pos:     n.Pos(),
-			End:     n.End(),
-			NewText: buf.Bytes(),
-		}
-		fixes = []analysis.SuggestedFix{
-			{Message: "change to pure type", TextEdits: []analysis.TextEdit{edit}},
-		}
+	if err := format.Node(&buf, token.NewFileSet(), x); err != nil {
+		return nil
+	}
+	buf.WriteString("{}")
+	edit := analysis.TextEdit{
+		Pos:     n.Pos(),
+		End:     n.End(),
+		NewText: buf.Bytes(),
 	}
 
-	return fixes
+	return []analysis.SuggestedFix{
+		{
+			Message:   "change to pure type",
+			TextEdits: []analysis.TextEdit{edit},
+		},
+	}
 }

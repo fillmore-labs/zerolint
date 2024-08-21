@@ -20,51 +20,64 @@ import (
 	"go/ast"
 	"log"
 
+	"fillmore-labs.com/zerolint/pkg/set"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-type Visitor struct {
-	*analysis.Pass
-	Excludes  map[string]struct{}
-	Detected  map[string]struct{}
+type Run struct {
+	Visitor
 	ZeroTrace bool
 	Basic     bool
 }
 
-func (v Visitor) Run() {
-	in, ok := v.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	if !ok {
-		log.Fatal("inspector result missing")
-	}
+// Visitor is an AST visitor for analyzing usage of pointers to zero-size variables.
+type Visitor struct {
+	*analysis.Pass
+	Excludes set.Set[string]
+	Detected set.Set[string]
+}
 
-	v.Excludes["runtime.Func"] = struct{}{}
-	v.Detected = make(map[string]struct{})
+// Run runs the analysis.
+func (v Run) Run() {
+	v.Excludes.Insert("runtime.Func")
+	v.Detected = set.New[string]()
 
-	if v.Basic {
-		types := []ast.Node{
-			(*ast.BinaryExpr)(nil),
-			(*ast.CallExpr)(nil),
-		}
-		in.Nodes(types, v.visitBasic)
+	if in, ok := v.ResultOf[inspect.Analyzer].(*inspector.Inspector); ok {
+		in.Nodes(v.visitFunc())
 	} else {
-		types := []ast.Node{
-			(*ast.StarExpr)(nil),
-			(*ast.UnaryExpr)(nil),
-			(*ast.BinaryExpr)(nil),
-			(*ast.CallExpr)(nil),
-		}
-		in.Nodes(types, v.visit)
+		log.Fatal("inspector result missing")
 	}
 
 	if v.ZeroTrace {
 		for name := range v.Detected {
-			log.Printf("found zero-size type %q", name)
+			log.Printf("found zero-sized type %q", name)
 		}
 	}
 }
 
+// visitFunc determines parameters and function to call for inspector.Nodes.
+func (v Run) visitFunc() ([]ast.Node, func(ast.Node, bool) bool) {
+	if v.Basic {
+		return []ast.Node{
+				(*ast.BinaryExpr)(nil),
+				(*ast.CallExpr)(nil),
+				(*ast.FuncDecl)(nil),
+			},
+			v.visitBasic
+	}
+
+	return []ast.Node{
+			(*ast.StarExpr)(nil),
+			(*ast.UnaryExpr)(nil),
+			(*ast.BinaryExpr)(nil),
+			(*ast.CallExpr)(nil),
+		},
+		v.visit
+}
+
+// visitBasic is the main functions called by inspector.Nodes for basic analysis.
 func (v Visitor) visitBasic(n ast.Node, push bool) bool {
 	if !push {
 		return true
@@ -77,11 +90,15 @@ func (v Visitor) visitBasic(n ast.Node, push bool) bool {
 	case *ast.CallExpr:
 		return v.visitCallBasic(x)
 
+	case *ast.FuncDecl:
+		return v.visitFunc(x)
+
 	default:
 		return true
 	}
 }
 
+// visit is the main functions called by inspector.Nodes for full analysis.
 func (v Visitor) visit(n ast.Node, push bool) bool {
 	if !push {
 		return true

@@ -27,7 +27,7 @@ const (
 	Doc  = `checks for usage of pointers to zero-length variables
 	
 Pointer to zero-length variables carry very little information and
-can be avoided in most cases.`
+can often be avoided.`
 )
 
 var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
@@ -44,19 +44,29 @@ func init() { //nolint:gochecknoinits
 }
 
 var (
+	// Excludes is a list of types to exclude from the analysis.
+	Excludes string //nolint:gochecknoglobals
+
+	// ZeroTrace enables tracing of found zero-sized types.
 	ZeroTrace bool //nolint:gochecknoglobals
-	Basic     bool //nolint:gochecknoglobals
+
+	// Basic enables basic analysis only.
+	Basic bool //nolint:gochecknoglobals
 )
 
+// Run applies the analyzer to a package.
 func run(pass *analysis.Pass) (any, error) {
-	excludes, err := ReadExcludes()
+	// Read the list of excluded types from the file specified by the "excluded" flag.
+	excludes, err := ReadExcludes(Excludes)
 	if err != nil {
 		return nil, err
 	}
 
-	v := visitor.Visitor{
-		Pass:      pass,
-		Excludes:  excludes,
+	v := visitor.Run{
+		Visitor: visitor.Visitor{
+			Pass:     pass,
+			Excludes: excludes,
+		},
 		ZeroTrace: ZeroTrace,
 		Basic:     Basic,
 	}

@@ -21,11 +21,13 @@ import (
 	"go/token"
 )
 
+// visitBinary checks for equality (==) and inequality (!=) comparisons in binary expressions.
 func (v Visitor) visitBinary(x *ast.BinaryExpr) bool {
+	// Only process equality and inequality operations.
 	if x.Op != token.EQL && x.Op != token.NEQ {
 		return true
 	}
 
-	// X == Y or X != Y
+	// Delegate to visitCmp for further analysis of the comparison.
 	return v.visitCmp(x, x.X, x.Y)
 }
