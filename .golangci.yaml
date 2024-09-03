@@ -48,3 +48,7 @@ issues:
       linters:
         - govet
       text: "lostcancel"
+    - path: ^main\.go$
+      linters:
+        - gocheckcompilerdirectives
+      text: "go:debug"

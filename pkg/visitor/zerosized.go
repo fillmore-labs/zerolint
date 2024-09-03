@@ -16,35 +16,29 @@
 
 package visitor
 
-import (
-	"go/types"
-)
+import "go/types"
 
-// zeroSizedTypePointer checks wether t is a pointer to a zero-sized type.
-// It returns the element type and true if it is, false otherwise.
+// zeroSizedTypePointer checks whether t is a pointer to a zero-sized type.
+// It returns true, and the element type if it is, false otherwise.
 func (v Visitor) zeroSizedTypePointer(t types.Type) (types.Type, bool) {
-	if p, ok := t.Underlying().(*types.Pointer); ok && v.isZeroSizedType(p.Elem()) {
+	if p, ok := t.Underlying().(*types.Pointer); ok && v.zeroSizedType(p.Elem()) {
 		return p.Elem(), true
 	}
 
 	return nil, false
 }
 
-// isZeroSizedType determines whether t is a zero-sized type not excluded from detection.
-func (v Visitor) isZeroSizedType(t types.Type) bool {
+// zeroSizedType determines whether t is a zero-sized type not excluded from detection.
+func (v Visitor) zeroSizedType(t types.Type) bool {
 	if !zeroSized(t) {
 		return false
 	}
 
 	// zero-sized type, check if the type's name is in the Excludes set.
 	name := t.String()
-	if v.Excludes.Has(name) {
-		return false
-	}
-
 	v.Detected.Insert(name)
 
-	return true
+	return !v.Excludes.Has(name)
 }
 
 // zeroSized determines whether t is provably a zero-sized type.
@@ -52,11 +46,7 @@ func zeroSized(t types.Type) bool {
 	switch x := t.Underlying().(type) {
 	case *types.Array:
 		// array type, check if the array length is zero or if the element type is zero-sized.
-		if x.Len() == 0 {
-			return true
-		}
-
-		return zeroSized(x.Elem())
+		return x.Len() == 0 || zeroSized(x.Elem())
 
 	case *types.Struct:
 		// struct type, check if all fields have zero-sized types.

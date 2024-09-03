@@ -17,6 +17,7 @@
 package a
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -72,6 +73,10 @@ func Exported() {
 	}(), ErrTwo) {
 		fmt.Println("equal")
 	}
+
+	_ = json.Unmarshal(nil, &myErrs)
+	_ = (*json.Decoder)(nil).Decode(&myErrs)
+	_ = json.NewDecoder(nil).Decode(&myErrs)
 
 	var err typedError[int] // want "pointer to zero-sized type"
 	_ = errors.As(ErrOne, &err)

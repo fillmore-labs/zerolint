@@ -20,15 +20,14 @@ import (
 	"bytes"
 	"go/ast"
 	"go/format"
-	"go/token"
 
 	"golang.org/x/tools/go/analysis"
 )
 
 // removeOp suggests a fix that removes the operator from the given expression.
-func removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
+func (v Visitor) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	var buf bytes.Buffer
-	if err := format.Node(&buf, token.NewFileSet(), x); err != nil {
+	if err := format.Node(&buf, v.Fset, x); err != nil {
 		return nil
 	}
 

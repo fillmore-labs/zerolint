@@ -30,6 +30,7 @@ type Run struct {
 	Visitor
 	ZeroTrace bool
 	Basic     bool
+	Generated bool
 }
 
 // Visitor is an AST visitor for analyzing usage of pointers to zero-size variables.
@@ -50,31 +51,33 @@ func (v Run) Run() {
 		log.Fatal("inspector result missing")
 	}
 
-	if v.ZeroTrace {
+	if v.ZeroTrace && len(v.Detected) > 0 {
+		log.Printf("found zero-sized types in %q:\n", v.Pass.Pkg.Path())
 		for name := range v.Detected {
-			log.Printf("found zero-sized type %q", name)
+			log.Printf("- %s\n", name)
 		}
 	}
 }
 
 // visitFunc determines parameters and function to call for inspector.Nodes.
 func (v Run) visitFunc() ([]ast.Node, func(ast.Node, bool) bool) {
-	if v.Basic {
-		return []ast.Node{
-				(*ast.BinaryExpr)(nil),
-				(*ast.CallExpr)(nil),
-				(*ast.FuncDecl)(nil),
-			},
-			v.visitBasic
+	types := make([]ast.Node, 0, 5) //nolint:mnd
+	var f func(ast.Node, bool) bool
+
+	types = append(types, (*ast.BinaryExpr)(nil), (*ast.CallExpr)(nil))
+	if !v.Generated {
+		types = append(types, (*ast.File)(nil))
 	}
 
-	return []ast.Node{
-			(*ast.StarExpr)(nil),
-			(*ast.UnaryExpr)(nil),
-			(*ast.BinaryExpr)(nil),
-			(*ast.CallExpr)(nil),
-		},
-		v.visit
+	if v.Basic {
+		types = append(types, (*ast.FuncDecl)(nil))
+		f = v.visitBasic
+	} else {
+		types = append(types, (*ast.StarExpr)(nil), (*ast.UnaryExpr)(nil))
+		f = v.visit
+	}
+
+	return types, f
 }
 
 // visitBasic is the main functions called by inspector.Nodes for basic analysis.
@@ -92,6 +95,9 @@ func (v Visitor) visitBasic(n ast.Node, push bool) bool {
 
 	case *ast.FuncDecl:
 		return v.visitFunc(x)
+
+	case *ast.File:
+		return !ast.IsGenerated(x)
 
 	default:
 		return true
@@ -116,6 +122,9 @@ func (v Visitor) visit(n ast.Node, push bool) bool {
 
 	case *ast.CallExpr:
 		return v.visitCall(x)
+
+	case *ast.File:
+		return !ast.IsGenerated(x)
 
 	default:
 		return true

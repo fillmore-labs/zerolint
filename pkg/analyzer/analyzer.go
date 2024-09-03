@@ -41,6 +41,7 @@ func init() { //nolint:gochecknoinits
 	Analyzer.Flags.StringVar(&Excludes, "excluded", "", "read excluded types from this file")
 	Analyzer.Flags.BoolVar(&ZeroTrace, "zerotrace", false, "trace found zero-sized types")
 	Analyzer.Flags.BoolVar(&Basic, "basic", false, "basic analysis only")
+	Analyzer.Flags.BoolVar(&Generated, "generated", false, "check generated files")
 }
 
 var (
@@ -52,6 +53,9 @@ var (
 
 	// Basic enables basic analysis only.
 	Basic bool //nolint:gochecknoglobals
+
+	// Generated enables checking generated files.
+	Generated bool //nolint:gochecknoglobals
 )
 
 // Run applies the analyzer to a package.
@@ -69,6 +73,7 @@ func run(pass *analysis.Pass) (any, error) {
 		},
 		ZeroTrace: ZeroTrace,
 		Basic:     Basic,
+		Generated: Generated,
 	}
 	v.Run()
 

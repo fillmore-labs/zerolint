@@ -24,9 +24,9 @@ import (
 
 // comparisonInfo holds type information for comparison operands.
 type comparisonInfo struct {
-	elem          types.Type
-	isZeroPointer bool
-	isInterface   bool
+	elem        types.Type
+	zeroPointer bool
+	iface       bool
 }
 
 // visitCmp checks comparisons like x == y, x != y and errors.Is(x, y).
@@ -42,14 +42,14 @@ func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 
 	var message string
 	switch {
-	case p[0].isZeroPointer && p[1].isZeroPointer:
+	case p[0].zeroPointer && p[1].zeroPointer:
 		message = comparisonMessage(p[0].elem, p[1].elem)
 
-	case p[0].isZeroPointer:
-		message = comparisonIMessage(p[0].elem, p[1].elem, p[1].isInterface)
+	case p[0].zeroPointer:
+		message = comparisonIMessage(p[0].elem, p[1].elem, p[1].iface)
 
-	case p[1].isZeroPointer:
-		message = comparisonIMessage(p[1].elem, p[0].elem, p[0].isInterface)
+	case p[1].zeroPointer:
+		message = comparisonIMessage(p[1].elem, p[0].elem, p[0].iface)
 
 	default:
 		return true
@@ -68,11 +68,11 @@ func (v Visitor) getComparisonInfo(t types.Type) comparisonInfo {
 	switch underlying := t.Underlying().(type) {
 	case *types.Pointer:
 		info.elem = underlying.Elem()
-		info.isZeroPointer = v.isZeroSizedType(info.elem)
+		info.zeroPointer = v.zeroSizedType(info.elem)
 
 	case *types.Interface:
 		info.elem = t
-		info.isInterface = true
+		info.iface = true
 
 	default:
 		info.elem = t

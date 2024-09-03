@@ -28,7 +28,7 @@ func TestAnalyzer(t *testing.T) { //nolint:paralleltest
 	a := analyzer.Analyzer
 
 	analyzer.Basic = true
-	analysistest.Run(t, dir, a, "go.test/basic")
+	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
 
 	analyzer.Basic = false
 	analyzer.Excludes = dir + "/excluded.txt"

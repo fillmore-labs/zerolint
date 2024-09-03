@@ -19,6 +19,8 @@ package visitor
 import (
 	"fmt"
 	"go/ast"
+
+	"golang.org/x/tools/go/analysis"
 )
 
 // visitFunc checks if the function declaration has a receiver of a pointer to a zero-sized type.
@@ -35,8 +37,13 @@ func (v Visitor) visitFunc(x *ast.FuncDecl) bool {
 		return true
 	}
 
+	var fixes []analysis.SuggestedFix
+	if s, ok2 := recv.Type.(*ast.StarExpr); ok2 {
+		fixes = v.removeOp(s, s.X)
+	}
+
 	message := fmt.Sprintf("method receiver is pointer to zero-size variable of type %q", elem)
-	v.report(recv, message, nil)
+	v.report(recv, message, fixes)
 
 	return true
 }

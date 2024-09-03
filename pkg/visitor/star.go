@@ -28,19 +28,19 @@ func (v Visitor) visitStar(x *ast.StarExpr) bool {
 	t := v.TypesInfo.Types[x.X].Type
 	var message string
 	if p, ok := t.Underlying().(*types.Pointer); ok {
-		if !v.isZeroSizedType(p.Elem()) {
+		if !v.zeroSizedType(p.Elem()) {
 			return true
 		}
 		// *t where t is a pointer to a zero-size variable.
 		message = fmt.Sprintf("pointer to zero-size variable of type %q", p.Elem())
-	} else if v.isZeroSizedType(t) {
+	} else if v.zeroSizedType(t) {
 		// *t where t is a zero-sized type.
 		message = fmt.Sprintf("pointer to zero-sized type %q", t)
 	} else {
 		return true
 	}
 
-	fixes := removeOp(x, x.X)
+	fixes := v.removeOp(x, x.X)
 	v.report(x, message, fixes)
 
 	return fixes == nil

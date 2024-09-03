@@ -24,7 +24,7 @@ import (
 
 type myError struct{}
 
-func (*myError) Error() string { // want "method receiver is pointer to zero-size variable"
+func (myError) Error() string { // want "method receiver is pointer to zero-size variable"
 	return "my error"
 }
 

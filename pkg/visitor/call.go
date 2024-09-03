@@ -21,32 +21,43 @@ import (
 	"fmt"
 	"go/ast"
 	"go/format"
-	"go/token"
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 )
 
-// visitCallBasic checks for errors.Is(x, y) and errors.As(x, y).
-func (v Visitor) visitCallBasic(x *ast.CallExpr) bool {
-	if len(x.Args) != 2 { //nolint:mnd
-		return true
-	}
+// visitCallValue checks for encoding/json#Decoder.Decode, json.Unmarshal, errors.Is and errors.As.
+func (v Visitor) visitCallBasic(x *ast.CallExpr) bool { //nolint:cyclop
 	fun, ok := unwrap(x.Fun).(*ast.SelectorExpr)
-	if !ok || !v.isErrors(fun.X) {
+	if !ok {
 		return true
 	}
 
-	if fun.Sel.Name == "As" { // Do not report pointers in errors.As(..., ...).
-		return false
+	funType := v.TypesInfo.Types[fun.X]
+	if funType.IsValue() && funType.Type.String() == "*encoding/json.Decoder" && fun.Sel.Name == "Decode" {
+		return false // Do not report pointers in json.Decoder#Decode
 	}
 
-	if fun.Sel.Name != "Is" {
+	switch path, ok2 := v.pathOf(fun.X); {
+	case !ok2:
+		return true
+
+	case path == "encoding/json" && fun.Sel.Name == "Unmarshal":
+		return false // Do not report pointers in json.Unmarshal(..., ...).
+
+	case len(x.Args) != 2 || path != "errors" && path != "golang.org/x/exp/errors":
+		return true
+
+	case fun.Sel.Name == "As":
+		return false // Do not report pointers in errors.As(..., ...)
+
+	case fun.Sel.Name == "Is":
+		// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
+		return v.visitCmp(x, x.Args[0], x.Args[1])
+
+	default:
 		return true
 	}
-
-	// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
-	return v.visitCmp(x, x.Args[0], x.Args[1])
 }
 
 // visitCall checks for type casts T(x), errors.Is(x, y), errors.As(x, y) and new(T).
@@ -67,20 +78,18 @@ func (v Visitor) visitCall(x *ast.CallExpr) bool {
 }
 
 // isErrors checks whether the expression is a package specifier for errors or golang.org/x/exp/errors.
-func (v Visitor) isErrors(x ast.Expr) bool {
+func (v Visitor) pathOf(x ast.Expr) (string, bool) {
 	id, ok := x.(*ast.Ident)
 	if !ok {
-		return false
+		return "", false
 	}
 
 	pkg, ok := v.TypesInfo.Uses[id].(*types.PkgName)
 	if !ok {
-		return false
+		return "", false
 	}
 
-	path := pkg.Imported().Path()
-
-	return path == "errors" || path == "golang.org/x/exp/errors"
+	return pkg.Imported().Path(), true
 }
 
 // visitCast is called for type casts T(nil).
@@ -97,7 +106,7 @@ func (v Visitor) visitCast(t types.Type, x *ast.CallExpr) bool {
 	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", elem)
 	var fixes []analysis.SuggestedFix
 	if s, ok2 := unwrap(x.Fun).(*ast.StarExpr); ok2 {
-		fixes = makePure(x, s.X)
+		fixes = v.makePure(x, s.X)
 	}
 
 	v.report(x, message, fixes)
@@ -117,12 +126,12 @@ func (v Visitor) visitNew(x *ast.CallExpr) bool {
 
 	arg := x.Args[0] // new(arg).
 	argType := v.TypesInfo.Types[arg].Type
-	if !v.isZeroSizedType(argType) {
+	if !v.zeroSizedType(argType) {
 		return true
 	}
 
 	message := fmt.Sprintf("new called on zero-sized type %q", argType)
-	fixes := makePure(x, arg)
+	fixes := v.makePure(x, arg)
 	v.report(x, message, fixes)
 
 	return false
@@ -143,9 +152,9 @@ func unwrap(e ast.Expr) ast.Expr {
 }
 
 // makePure adds a suggested fix from (*T)(nil) or new(T) to T{}.
-func makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
+func (v Visitor) makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	var buf bytes.Buffer
-	if err := format.Node(&buf, token.NewFileSet(), x); err != nil {
+	if err := format.Node(&buf, v.Fset, x); err != nil {
 		return nil
 	}
 	buf.WriteString("{}")
