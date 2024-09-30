@@ -1,2 +1,2 @@
-golang.org/x/exp/errors v0.0.0-20240823005443-9b4947da3948 h1:IE9ZGXGK0A3EhE/vajvqwjYT5JsrZfxtVwBflW/O2vU=
-golang.org/x/exp/errors v0.0.0-20240823005443-9b4947da3948/go.mod h1:YgqsNsAu4fTvlab/7uiYK9LJrCIzKg/NiZUIH1/ayqo=
+golang.org/x/exp/errors v0.0.0-20240909161429-701f63a606c0 h1:eGQQGhuBAeqIkv3jxHQL4X9W4dewDCzN3Lev5bKnLdo=
+golang.org/x/exp/errors v0.0.0-20240909161429-701f63a606c0/go.mod h1:YgqsNsAu4fTvlab/7uiYK9LJrCIzKg/NiZUIH1/ayqo=

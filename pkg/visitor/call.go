@@ -125,7 +125,7 @@ func (v Visitor) visitNew(x *ast.CallExpr) bool {
 	}
 
 	arg := x.Args[0] // new(arg).
-	argType := v.TypesInfo.Types[arg].Type
+	argType := v.TypesInfo.TypeOf(arg)
 	if !v.zeroSizedType(argType) {
 		return true
 	}

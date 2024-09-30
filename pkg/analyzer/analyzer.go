@@ -33,6 +33,7 @@ can often be avoided.`
 var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
 	Name:     Name,
 	Doc:      Doc,
+	URL:      "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/analyzer",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
