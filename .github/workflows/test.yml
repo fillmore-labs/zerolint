@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        go: ["1.23", "1.22"]
+        go: ["1.23.3", "1.22.9"]
     env:
       GOTOOLCHAIN: local
     steps:
@@ -28,11 +28,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
-          check-latest: true
       - name: 🧸 golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.61.0
+          version: v1.62.0
       - name: 🔨 Test
         run: |
           go get -C ./pkg/analyzer/testdata golang.org/x/exp/errors

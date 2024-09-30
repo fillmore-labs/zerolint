@@ -31,14 +31,14 @@ func (v Visitor) visitFunc(x *ast.FuncDecl) bool {
 	}
 
 	recv := x.Recv.List[0]
-	recvType := v.TypesInfo.Types[recv.Type].Type
+	recvType := v.TypesInfo.TypeOf(recv.Type)
 	elem, ok := v.zeroSizedTypePointer(recvType)
 	if !ok { // Not a pointer receiver or no pointer to a zero-sized type.
 		return true
 	}
 
 	var fixes []analysis.SuggestedFix
-	if s, ok2 := recv.Type.(*ast.StarExpr); ok2 {
+	if s, ok := recv.Type.(*ast.StarExpr); ok {
 		fixes = v.removeOp(s, s.X)
 	}
 

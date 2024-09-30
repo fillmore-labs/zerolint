@@ -28,7 +28,7 @@ import (
 
 // visitCallValue checks for encoding/json#Decoder.Decode, json.Unmarshal, errors.Is and errors.As.
 func (v Visitor) visitCallBasic(x *ast.CallExpr) bool { //nolint:cyclop
-	fun, ok := unwrap(x.Fun).(*ast.SelectorExpr)
+	fun, ok := ast.Unparen(x.Fun).(*ast.SelectorExpr)
 	if !ok {
 		return true
 	}
@@ -38,8 +38,8 @@ func (v Visitor) visitCallBasic(x *ast.CallExpr) bool { //nolint:cyclop
 		return false // Do not report pointers in json.Decoder#Decode
 	}
 
-	switch path, ok2 := v.pathOf(fun.X); {
-	case !ok2:
+	switch path, ok := v.pathOf(fun.X); {
+	case !ok:
 		return true
 
 	case path == "encoding/json" && fun.Sel.Name == "Unmarshal":
@@ -105,7 +105,7 @@ func (v Visitor) visitCast(t types.Type, x *ast.CallExpr) bool {
 
 	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", elem)
 	var fixes []analysis.SuggestedFix
-	if s, ok2 := unwrap(x.Fun).(*ast.StarExpr); ok2 {
+	if s, ok := ast.Unparen(x.Fun).(*ast.StarExpr); ok {
 		fixes = v.makePure(x, s.X)
 	}
 
@@ -119,13 +119,13 @@ func (v Visitor) visitNew(x *ast.CallExpr) bool {
 	if len(x.Args) != 1 {
 		return true
 	}
-	fun, ok := unwrap(x.Fun).(*ast.Ident)
+	fun, ok := ast.Unparen(x.Fun).(*ast.Ident)
 	if !ok || fun.Name != "new" {
 		return true
 	}
 
 	arg := x.Args[0] // new(arg).
-	argType := v.TypesInfo.Types[arg].Type
+	argType := v.TypesInfo.TypeOf(arg)
 	if !v.zeroSizedType(argType) {
 		return true
 	}
@@ -135,20 +135,6 @@ func (v Visitor) visitNew(x *ast.CallExpr) bool {
 	v.report(x, message, fixes)
 
 	return false
-}
-
-// unwrap removes parentheses from an expression (x).
-func unwrap(e ast.Expr) ast.Expr {
-	x := e
-	for {
-		p, ok := x.(*ast.ParenExpr)
-		if !ok {
-			break
-		}
-		x = p.X
-	}
-
-	return x
 }
 
 // makePure adds a suggested fix from (*T)(nil) or new(T) to T{}.

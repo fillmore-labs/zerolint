@@ -81,12 +81,12 @@ func (v Run) visitFunc() ([]ast.Node, func(ast.Node, bool) bool) {
 }
 
 // visitBasic is the main functions called by inspector.Nodes for basic analysis.
-func (v Visitor) visitBasic(n ast.Node, push bool) bool {
+func (v Visitor) visitBasic(x ast.Node, push bool) bool {
 	if !push {
 		return true
 	}
 
-	switch x := n.(type) {
+	switch x := x.(type) {
 	case *ast.BinaryExpr:
 		return v.visitBinary(x)
 
@@ -105,12 +105,12 @@ func (v Visitor) visitBasic(n ast.Node, push bool) bool {
 }
 
 // visit is the main functions called by inspector.Nodes for full analysis.
-func (v Visitor) visit(n ast.Node, push bool) bool {
+func (v Visitor) visit(x ast.Node, push bool) bool {
 	if !push {
 		return true
 	}
 
-	switch x := n.(type) {
+	switch x := x.(type) {
 	case *ast.StarExpr:
 		return v.visitStar(x)
 

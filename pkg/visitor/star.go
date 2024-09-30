@@ -25,7 +25,7 @@ import (
 // visitUnary checks expressions in form *x.
 func (v Visitor) visitStar(x *ast.StarExpr) bool {
 	// *...
-	t := v.TypesInfo.Types[x.X].Type
+	t := v.TypesInfo.TypeOf(x.X)
 	var message string
 	if p, ok := t.Underlying().(*types.Pointer); ok {
 		if !v.zeroSizedType(p.Elem()) {
