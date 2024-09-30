@@ -52,3 +52,6 @@ issues:
       linters:
         - gocheckcompilerdirectives
       text: "go:debug"
+    - linters:
+        - govet
+      text: '^shadow: declaration of "(ctx|err|ok)" shadows declaration at line \d+$'

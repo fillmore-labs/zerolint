@@ -29,7 +29,7 @@ func (v Visitor) visitUnary(x *ast.UnaryExpr) bool {
 	}
 
 	// &...
-	t := v.TypesInfo.Types[x.X].Type
+	t := v.TypesInfo.TypeOf(x.X)
 	if !v.zeroSizedType(t) {
 		return true
 	}

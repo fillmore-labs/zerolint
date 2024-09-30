@@ -1,10 +1,10 @@
 module fillmore-labs.com/zerolint
 
-go 1.22.7
+go 1.22.8
 
-toolchain go1.23.1
+toolchain go1.23.2
 
-require golang.org/x/tools v0.25.0
+require golang.org/x/tools v0.26.0
 
 require (
 	golang.org/x/mod v0.21.0 // indirect
