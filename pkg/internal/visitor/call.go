@@ -17,10 +17,8 @@
 package visitor
 
 import (
-	"bytes"
 	"fmt"
 	"go/ast"
-	"go/format"
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
@@ -33,15 +31,19 @@ func (v Visitor) visitCallBasic(x *ast.CallExpr) bool { //nolint:cyclop
 		return true
 	}
 
-	funType := v.TypesInfo.Types[fun.X]
-	if funType.IsValue() && funType.Type.String() == "*encoding/json.Decoder" && fun.Sel.Name == "Decode" {
-		return false // Do not report pointers in json.Decoder#Decode
+	if sel, ok := v.Pass.TypesInfo.Selections[fun]; ok {
+		// Delegate selections
+		return visitSelectionCall(sel)
 	}
 
-	switch path, ok := v.pathOf(fun.X); {
-	case !ok:
-		return true
+	// qualified identifiers
 
+	pkg, ok := pkgName(v.Pass, fun)
+	if !ok {
+		return true
+	}
+
+	switch path := pkg.Imported().Path(); {
 	case path == "encoding/json" && fun.Sel.Name == "Unmarshal":
 		return false // Do not report pointers in json.Unmarshal(..., ...).
 
@@ -60,9 +62,35 @@ func (v Visitor) visitCallBasic(x *ast.CallExpr) bool { //nolint:cyclop
 	}
 }
 
+func visitSelectionCall(sel *types.Selection) bool {
+	if sel.Kind() != types.MethodVal {
+		return true
+	}
+
+	if sel.Recv().String() == "*encoding/json.Decoder" && sel.Obj().Name() == "Decode" {
+		return false // Do not report pointers in json.Decoder#Decode
+	}
+
+	return true
+}
+
+func pkgName(pass *analysis.Pass, fun *ast.SelectorExpr) (*types.PkgName, bool) {
+	id, ok := fun.X.(*ast.Ident)
+	if !ok {
+		return nil, false
+	}
+
+	pkg, ok := pass.TypesInfo.Uses[id].(*types.PkgName)
+	if !ok {
+		return nil, false
+	}
+
+	return pkg, true
+}
+
 // visitCall checks for type casts T(x), errors.Is(x, y), errors.As(x, y) and new(T).
 func (v Visitor) visitCall(x *ast.CallExpr) bool {
-	switch funType := v.TypesInfo.Types[x.Fun]; {
+	switch funType := v.Pass.TypesInfo.Types[x.Fun]; {
 	case funType.IsType(): // Check for type casts T(...).
 		return v.visitCast(funType.Type, x)
 
@@ -77,24 +105,12 @@ func (v Visitor) visitCall(x *ast.CallExpr) bool {
 	}
 }
 
-// isErrors checks whether the expression is a package specifier for errors or golang.org/x/exp/errors.
-func (v Visitor) pathOf(x ast.Expr) (string, bool) {
-	id, ok := x.(*ast.Ident)
-	if !ok {
-		return "", false
-	}
-
-	pkg, ok := v.TypesInfo.Uses[id].(*types.PkgName)
-	if !ok {
-		return "", false
-	}
-
-	return pkg.Imported().Path(), true
-}
-
 // visitCast is called for type casts T(nil).
 func (v Visitor) visitCast(t types.Type, x *ast.CallExpr) bool {
-	if len(x.Args) != 1 || !v.TypesInfo.Types[x.Args[0]].IsNil() {
+	if len(x.Args) != 1 {
+		return true
+	}
+	if n, ok := v.Pass.TypesInfo.Types[x.Args[0]]; !ok || !n.IsNil() {
 		return true
 	}
 
@@ -125,7 +141,7 @@ func (v Visitor) visitNew(x *ast.CallExpr) bool {
 	}
 
 	arg := x.Args[0] // new(arg).
-	argType := v.TypesInfo.TypeOf(arg)
+	argType := v.Pass.TypesInfo.TypeOf(arg)
 	if !v.zeroSizedType(argType) {
 		return true
 	}
@@ -135,25 +151,4 @@ func (v Visitor) visitNew(x *ast.CallExpr) bool {
 	v.report(x, message, fixes)
 
 	return false
-}
-
-// makePure adds a suggested fix from (*T)(nil) or new(T) to T{}.
-func (v Visitor) makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
-	var buf bytes.Buffer
-	if err := format.Node(&buf, v.Fset, x); err != nil {
-		return nil
-	}
-	buf.WriteString("{}")
-	edit := analysis.TextEdit{
-		Pos:     n.Pos(),
-		End:     n.End(),
-		NewText: buf.Bytes(),
-	}
-
-	return []analysis.SuggestedFix{
-		{
-			Message:   "change to pure type",
-			TextEdits: []analysis.TextEdit{edit},
-		},
-	}
 }

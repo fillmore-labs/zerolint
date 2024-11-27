@@ -14,40 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package visitor
 
 import (
-	"bufio"
-	"os"
-
-	"fillmore-labs.com/zerolint/pkg/set"
+	"go/ast"
 )
 
-// ReadExcludes reads zero-sized types excluded from analysis from a file and returns them as a set.
-func ReadExcludes(name string) (set.Set[string], error) {
-	excludes := set.New[string]()
-
-	if Excludes == "" {
-		return excludes, nil
-	}
-
-	file, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		expr := scanner.Bytes()
-		if len(expr) == 0 || expr[0] == '#' {
-			continue
-		}
-		excludes.Insert(string(expr))
-	}
-	if err2 := scanner.Err(); err2 != nil {
-		return nil, err2
-	}
-
-	return excludes, nil
+// visitFile checks for generated files.
+func (Visitor) visitFile(x *ast.File) bool {
+	return !ast.IsGenerated(x)
 }

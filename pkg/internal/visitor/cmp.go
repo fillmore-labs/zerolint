@@ -33,7 +33,7 @@ type comparisonInfo struct {
 func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 	var p [2]comparisonInfo
 	for i, z := range []ast.Expr{x, y} {
-		t := v.TypesInfo.Types[z]
+		t := v.Pass.TypesInfo.Types[z]
 		if t.IsNil() {
 			return true
 		}

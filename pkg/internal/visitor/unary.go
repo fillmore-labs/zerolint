@@ -19,27 +19,22 @@ package visitor
 import (
 	"fmt"
 	"go/ast"
-	"go/types"
+	"go/token"
 )
 
-// visitUnary checks expressions in form *x.
-func (v Visitor) visitStar(x *ast.StarExpr) bool {
-	// *...
-	t := v.TypesInfo.TypeOf(x.X)
-	var message string
-	if p, ok := t.Underlying().(*types.Pointer); ok {
-		if !v.zeroSizedType(p.Elem()) {
-			return true
-		}
-		// *t where t is a pointer to a zero-size variable.
-		message = fmt.Sprintf("pointer to zero-size variable of type %q", p.Elem())
-	} else if v.zeroSizedType(t) {
-		// *t where t is a zero-sized type.
-		message = fmt.Sprintf("pointer to zero-sized type %q", t)
-	} else {
+// visitUnary checks expressions in form &x.
+func (v Visitor) visitUnary(x *ast.UnaryExpr) bool {
+	if x.Op != token.AND {
 		return true
 	}
 
+	// &...
+	t := v.Pass.TypesInfo.TypeOf(x.X)
+	if !v.zeroSizedType(t) {
+		return true
+	}
+
+	message := fmt.Sprintf("address of zero-size variable of type %q", t)
 	fixes := v.removeOp(x, x.X)
 	v.report(x, message, fixes)
 

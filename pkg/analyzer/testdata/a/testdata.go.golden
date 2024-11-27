@@ -17,72 +17,16 @@
 package a
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-
-	xerrors "golang.org/x/exp/errors"
 )
-
-type empty struct{}
-
-type typedError[T any] struct {
-	_ [0]T
-}
-
-func (typedError[_]) Error() string { // want "pointer to zero-sized type"
-	return "an error"
-}
-
-var (
-	_      error = typedError[any]{}     // want "address of zero-size variable"
-	ErrOne       = (typedError[int]{})   // want "address of zero-size variable"
-	ErrTwo       = typedError[float64]{} // want "new called on zero-sized type"
-)
-
-type myErrors struct{}
-
-func (myErrors) Is(err, target error) bool {
-	return false
-}
-
-var myErrs = myErrors{}
 
 func Exported() {
 	var x [0]string
 	var y [0]string
 
-	if errors.Is(ErrOne, nil) {
-		fmt.Println("nil")
-	}
-
-	var oneErr typedError[int] // want "pointer to zero-sized type"
-	if errors.As(ErrOne, &oneErr) {
-		fmt.Println("ErrOne is typedError[int]")
-	}
-
-	func() {
-		errors := myErrs
-		if errors.Is(ErrOne, ErrTwo) {
-			fmt.Println("one is two")
-		}
-	}()
-
-	if xerrors.Is(func() error { // want "comparison of pointer to zero-size variable"
-		return ErrOne
-	}(), ErrTwo) {
-		fmt.Println("equal")
-	}
-
-	_ = json.Unmarshal(nil, &myErrs)
-	_ = (*json.Decoder)(nil).Decode(&myErrs)
-	_ = json.NewDecoder(nil).Decode(&myErrs)
-
-	var err typedError[int] // want "pointer to zero-sized type"
-	_ = errors.As(ErrOne, &err)
-
 	_ = struct{}{} // want "new called on zero-sized type"
 
+	type empty struct{}
 	_ = empty{} // want "new called on zero-sized type"
 
 	xp, yp := x, y // want "address of zero-size variable" "address of zero-size variable"
@@ -104,61 +48,3 @@ func Exported() {
 	case string:
 	}
 }
-
-func Undiagnosed() {
-	i := 1 + 1
-	i = *&i
-
-	f := func(int) {}
-	f(i)
-
-	_ = !false
-}
-
-type A [0]string
-
-type B = A
-
-func (B) Combine(_ B) B { // want "pointer to zero-sized type" "pointer to zero-sized type" "pointer to zero-sized type"
-	return B{} // want "address of zero-size variable"
-}
-
-func Ptr[T any](v T) *T { return &v }
-
-type greeter [5][5]struct{}
-
-type greeterAlias = greeter // want "pointer to zero-sized type"
-
-func (g greeterAlias) String() string {
-	return "hello, world"
-}
-
-var _ fmt.Stringer = greeter{} // want "address of zero-size variable"
-
-var _ fmt.Stringer = greeter{} // want "cast of nil to pointer to zero-size variable"
-
-var _ fmt.Stringer = greeter{} // want "new called on zero-sized type"
-
-type greeter2[T any] [5][5][0]T
-
-func (g greeter2[T]) String() string { // want "pointer to zero-sized type"
-	return "hello, world"
-}
-
-var _ fmt.Stringer = greeter2[int]{} // want "address of zero-size variable"
-
-type C struct{}
-
-func (*C) String() string {
-	return "hello, world"
-}
-
-var _ fmt.Stringer = (*C)(nil)
-
-type D struct{ _ int }
-
-func (*D) String() string {
-	return "hello, world"
-}
-
-var _ fmt.Stringer = (*D)(nil)
