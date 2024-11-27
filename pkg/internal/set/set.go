@@ -20,9 +20,14 @@ package set
 // It is implemented using a map with values of an empty struct.
 type Set[T comparable] map[T]struct{}
 
-// New returns a new empty set of type T.
-func New[T comparable]() Set[T] {
-	return make(Set[T])
+// New returns a new set of type T containing elems.
+func New[T comparable](elems ...T) Set[T] {
+	s := make(Set[T], len(elems))
+	for _, e := range elems {
+		s.Insert(e)
+	}
+
+	return s
 }
 
 // Insert adds the element t to the set s.
@@ -36,4 +41,16 @@ func (s Set[T]) Has(t T) bool {
 	_, ok := s[t]
 
 	return ok
+}
+
+// Elements returns the elements of s as a list.
+func (s Set[T]) Elements() []T {
+	sl := make([]T, len(s))
+	i := 0
+	for n := range s {
+		sl[i] = n
+		i++
+	}
+
+	return sl
 }

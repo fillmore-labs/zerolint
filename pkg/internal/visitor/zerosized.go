@@ -19,7 +19,7 @@ package visitor
 import "go/types"
 
 // zeroSizedTypePointer checks whether t is a pointer to a zero-sized type.
-// It returns true, and the element type if it is, false otherwise.
+// It returns the elements type and true if it is, false otherwise.
 func (v Visitor) zeroSizedTypePointer(t types.Type) (types.Type, bool) {
 	if p, ok := t.Underlying().(*types.Pointer); ok && v.zeroSizedType(p.Elem()) {
 		return p.Elem(), true
