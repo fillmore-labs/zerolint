@@ -31,7 +31,7 @@ func (v Visitor) visitFunc(x *ast.FuncDecl) bool {
 	}
 
 	recv := x.Recv.List[0]
-	recvType := v.TypesInfo.TypeOf(recv.Type)
+	recvType := v.Pass.TypesInfo.TypeOf(recv.Type)
 	elem, ok := v.zeroSizedTypePointer(recvType)
 	if !ok { // Not a pointer receiver or no pointer to a zero-sized type.
 		return true

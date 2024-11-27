@@ -14,31 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package a
 
-import (
-	"testing"
+type typedError[T any] struct {
+	_ [0]T
+}
 
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
+func (typedError[_]) Error() string { // want "pointer to zero-sized type"
+	return "an error"
+}
+
+var (
+	_      error = typedError[any]{}         // want "address of zero-size variable"
+	ErrOne       = (typedError[int]{})       // want "address of zero-size variable"
+	ErrTwo       = typedError[float64]{} // want "new called on zero-sized type"
 )
-
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
-
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/a")
-}
-
-func TestAnalyzerBasic(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
-
-	analyzer.Basic = true
-	analyzer.Excludes = ""
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
-}

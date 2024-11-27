@@ -14,29 +14,24 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package visitor
+package excludes_test
 
 import (
-	"fmt"
-	"go/ast"
-	"go/token"
+	"errors"
+	"io/fs"
 )
 
-// visitUnary checks expressions in form &x.
-func (v Visitor) visitUnary(x *ast.UnaryExpr) bool {
-	if x.Op != token.AND {
-		return true
-	}
+type errFS struct{ err error }
 
-	// &...
-	t := v.TypesInfo.TypeOf(x.X)
-	if !v.zeroSizedType(t) {
-		return true
-	}
+func (e errFS) Open(_ string) (fs.File, error) { return e, nil }
 
-	message := fmt.Sprintf("address of zero-size variable of type %q", t)
-	fixes := v.removeOp(x, x.X)
-	v.report(x, message, fixes)
+func (errFS) Stat() (fs.FileInfo, error) { return nil, errors.ErrUnsupported }
 
-	return fixes == nil
+func (e errFS) Read(_ []byte) (int, error) { return 0, e.err }
+
+func (errFS) Close() error { return nil }
+
+// ErrFs returns a [fs.FS] that can open any file and returns 0, err from all Read calls.
+func ErrFs(err error) fs.FS {
+	return errFS{err: err}
 }

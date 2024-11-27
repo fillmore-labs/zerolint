@@ -17,7 +17,7 @@
 package analyzer
 
 import (
-	"fillmore-labs.com/zerolint/pkg/visitor"
+	"fillmore-labs.com/zerolint/pkg/internal/excludes"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 )
@@ -59,24 +59,18 @@ var (
 	Generated bool //nolint:gochecknoglobals
 )
 
-// Run applies the analyzer to a package.
+// run applies the analyzer to a package.
 func run(pass *analysis.Pass) (any, error) {
 	// Read the list of excluded types from the file specified by the "excluded" flag.
-	excludes, err := ReadExcludes(Excludes)
+	ex, err := excludes.ReadExcludes(osFS{}, Excludes)
 	if err != nil {
 		return nil, err
 	}
 
-	v := visitor.Run{
-		Visitor: visitor.Visitor{
-			Pass:     pass,
-			Excludes: excludes,
-		},
-		ZeroTrace: ZeroTrace,
-		Basic:     Basic,
-		Generated: Generated,
-	}
-	v.Run()
-
-	return any(nil), nil
+	return NewRun(
+		WithExcludes(ex),
+		WithZeroTrace(ZeroTrace),
+		WithBasic(Basic),
+		WithGenerated(Generated),
+	)(pass)
 }

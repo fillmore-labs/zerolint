@@ -14,31 +14,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package analyzer
 
 import (
-	"testing"
-
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
+	"io/fs"
+	"os"
 )
 
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
+type osFS struct{}
 
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
+var _ fs.FS = osFS{}
 
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/a")
-}
-
-func TestAnalyzerBasic(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
-
-	analyzer.Basic = true
-	analyzer.Excludes = ""
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
+func (osFS) Open(name string) (fs.File, error) {
+	return os.Open(name)
 }

@@ -14,39 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package set_test
+package a
 
-import (
-	"testing"
+type embedded[T any] struct{ _ T }
 
-	. "fillmore-labs.com/zerolint/pkg/set"
-)
+func TypeParam() {
+	_ = &embedded[int]{}
 
-func TestSet(t *testing.T) {
-	t.Parallel()
-
-	// given
-	s := New[int]()
-
-	// when
-	s.Insert(1)
-
-	// then
-	if !s.Has(1) {
-		t.Error("Expected 1 to be set")
-	}
-}
-
-func TestUnset(t *testing.T) {
-	t.Parallel()
-
-	// given
-	s := New[int]()
-
-	// when
-
-	// then
-	if s.Has(1) {
-		t.Error("Expected 1 to be unset")
-	}
+	_ = &embedded[empty]{} // want "address of zero-size variable"
 }

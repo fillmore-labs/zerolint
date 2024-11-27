@@ -14,31 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package a
 
-import (
-	"testing"
+import "encoding/json"
 
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
-)
+func IgnoreJson() {
+	empty := struct{}{}
 
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
-
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/a")
-}
-
-func TestAnalyzerBasic(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
-
-	analyzer.Basic = true
-	analyzer.Excludes = ""
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
+	_ = json.Unmarshal(nil, &empty)
+	_ = (*json.Decoder)(nil).Decode(&empty)
+	_ = json.NewDecoder(nil).Decode(&empty)
 }

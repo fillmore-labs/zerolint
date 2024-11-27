@@ -14,31 +14,54 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package set_test
 
 import (
 	"testing"
 
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
+	. "fillmore-labs.com/zerolint/pkg/internal/set"
 )
 
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
+func TestSet(t *testing.T) {
+	t.Parallel()
 
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
+	// given
+	s := New[int]()
 
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/a")
+	// when
+	s.Insert(1)
+
+	// then
+	if !s.Has(1) {
+		t.Error("Expected 1 to be set")
+	}
 }
 
-func TestAnalyzerBasic(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
+func TestUnset(t *testing.T) {
+	t.Parallel()
 
-	analyzer.Basic = true
-	analyzer.Excludes = ""
+	// given
+	s := New[int]()
 
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
+	// when
+
+	// then
+	if s.Has(1) {
+		t.Error("Expected 1 to be unset")
+	}
+}
+
+func TestElements(t *testing.T) {
+	t.Parallel()
+
+	// given
+	s := New(1)
+
+	// when
+	l := s.Elements()
+
+	// then
+	if len(l) != 1 || l[0] != 1 {
+		t.Errorf("Expected l to be [1], got %v", l)
+	}
 }
