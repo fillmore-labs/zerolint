@@ -24,24 +24,25 @@ import (
 
 // visitUnary checks expressions in form *x.
 func (v Visitor) visitStar(x *ast.StarExpr) bool {
-	// *...
-	t := v.TypesInfo.TypeOf(x.X)
+	t := v.Pass.TypesInfo.TypeOf(x.X)
 	var message string
-	if p, ok := t.Underlying().(*types.Pointer); ok {
-		if !v.zeroSizedType(p.Elem()) {
-			return true
-		}
-		// *t where t is a pointer to a zero-size variable.
+	switch p, ok := t.Underlying().(*types.Pointer); {
+	case ok && v.zeroSizedType(p.Elem()):
+		// *... where the type of ... is a pointer to a zero-size variable.
+		// p := &struct{}{}; _ = *p
 		message = fmt.Sprintf("pointer to zero-size variable of type %q", p.Elem())
-	} else if v.zeroSizedType(t) {
-		// *t where t is a zero-sized type.
+
+	case !ok && v.zeroSizedType(t):
+		// *... where ... is a zero-sized type.
+		// type t struct{}; var _ *t
 		message = fmt.Sprintf("pointer to zero-sized type %q", t)
-	} else {
+
+	default:
 		return true
 	}
 
-	fixes := v.removeOp(x, x.X)
-	v.report(x, message, fixes)
+	fixes := v.Pass.removeOp(x, x.X)
+	v.Pass.report(x, message, fixes)
 
 	return fixes == nil
 }

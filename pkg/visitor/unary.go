@@ -29,14 +29,14 @@ func (v Visitor) visitUnary(x *ast.UnaryExpr) bool {
 	}
 
 	// &...
-	t := v.TypesInfo.TypeOf(x.X)
+	t := v.Pass.TypesInfo.TypeOf(x.X)
 	if !v.zeroSizedType(t) {
 		return true
 	}
 
 	message := fmt.Sprintf("address of zero-size variable of type %q", t)
-	fixes := v.removeOp(x, x.X)
-	v.report(x, message, fixes)
+	fixes := v.Pass.removeOp(x, x.X)
+	v.Pass.report(x, message, fixes)
 
 	return fixes == nil
 }

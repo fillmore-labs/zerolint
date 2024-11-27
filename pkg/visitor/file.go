@@ -14,31 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package visitor
 
 import (
-	"testing"
-
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
+	"go/ast"
 )
 
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
-
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/a")
-}
-
-func TestAnalyzerBasic(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
-
-	analyzer.Basic = true
-	analyzer.Excludes = ""
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
+// visitFile checks for generated files.
+func (v Visitor) visitFile(x *ast.File) bool {
+	return !ast.IsGenerated(x)
 }

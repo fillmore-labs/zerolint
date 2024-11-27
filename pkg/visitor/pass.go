@@ -24,10 +24,12 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+type Pass analysis.Pass
+
 // removeOp suggests a fix that removes the operator from the given expression.
-func (v Visitor) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
+func (p *Pass) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	var buf bytes.Buffer
-	if err := format.Node(&buf, v.Fset, x); err != nil {
+	if err := format.Node(&buf, p.Fset, x); err != nil {
 		return nil
 	}
 
@@ -45,9 +47,30 @@ func (v Visitor) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	}
 }
 
+// makePure adds a suggested fix from (*T)(nil) or new(T) to T{}.
+func (p *Pass) makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
+	var buf bytes.Buffer
+	if err := format.Node(&buf, p.Fset, x); err != nil {
+		return nil
+	}
+	buf.WriteString("{}")
+	edit := analysis.TextEdit{
+		Pos:     n.Pos(),
+		End:     n.End(),
+		NewText: buf.Bytes(),
+	}
+
+	return []analysis.SuggestedFix{
+		{
+			Message:   "change to pure type",
+			TextEdits: []analysis.TextEdit{edit},
+		},
+	}
+}
+
 // report adds a diagnostic message to the analysis pass.
-func (v Visitor) report(rng analysis.Range, message string, fixes []analysis.SuggestedFix) {
-	v.Report(analysis.Diagnostic{
+func (p *Pass) report(rng analysis.Range, message string, fixes []analysis.SuggestedFix) {
+	p.Report(analysis.Diagnostic{
 		Pos:            rng.Pos(),
 		End:            rng.End(),
 		Category:       "zero-size",

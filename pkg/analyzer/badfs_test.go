@@ -17,28 +17,28 @@
 package analyzer_test
 
 import (
-	"testing"
-
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
+	"errors"
+	"io"
+	"io/fs"
+	"testing/iotest"
 )
 
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
+var ErrTest = errors.New("test error")
 
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
+type badFS struct{}
 
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/a")
+var _ fs.FS = badFS{}
+
+func (badFS) Open(_ string) (fs.File, error) {
+	errReader := iotest.ErrReader(ErrTest)
+
+	return badFile{Reader: errReader}, nil
 }
 
-func TestAnalyzerBasic(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
+type badFile struct{ io.Reader }
 
-	analyzer.Basic = true
-	analyzer.Excludes = ""
+func (badFile) Close() error { return nil }
 
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
-}
+func (badFile) Stat() (fs.FileInfo, error) { return nil, errors.ErrUnsupported }
+
+var _ fs.File = badFile{}

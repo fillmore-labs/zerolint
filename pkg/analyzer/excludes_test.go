@@ -17,28 +17,26 @@
 package analyzer_test
 
 import (
+	"errors"
+	"io/fs"
 	"testing"
+	"testing/fstest"
 
 	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
 )
 
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
+func TestExcludesNotExist(t *testing.T) { //nolint:paralleltest
+	_, err := analyzer.ReadExcludes(fstest.MapFS{}, "/nonexistent")
 
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/a")
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("Exected %q, got %q", fs.ErrNotExist, err)
+	}
 }
 
-func TestAnalyzerBasic(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
+func TestExcludesInvalidRead(t *testing.T) { //nolint:paralleltest
+	_, err := analyzer.ReadExcludes(badFS{}, "/bad")
 
-	analyzer.Basic = true
-	analyzer.Excludes = ""
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
+	if !errors.Is(err, ErrTest) {
+		t.Errorf("Exected %q, got %q", ErrTest, err)
+	}
 }

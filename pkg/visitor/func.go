@@ -31,7 +31,7 @@ func (v Visitor) visitFunc(x *ast.FuncDecl) bool {
 	}
 
 	recv := x.Recv.List[0]
-	recvType := v.TypesInfo.TypeOf(recv.Type)
+	recvType := v.Pass.TypesInfo.TypeOf(recv.Type)
 	elem, ok := v.zeroSizedTypePointer(recvType)
 	if !ok { // Not a pointer receiver or no pointer to a zero-sized type.
 		return true
@@ -39,11 +39,11 @@ func (v Visitor) visitFunc(x *ast.FuncDecl) bool {
 
 	var fixes []analysis.SuggestedFix
 	if s, ok := recv.Type.(*ast.StarExpr); ok {
-		fixes = v.removeOp(s, s.X)
+		fixes = v.Pass.removeOp(s, s.X)
 	}
 
 	message := fmt.Sprintf("method receiver is pointer to zero-size variable of type %q", elem)
-	v.report(recv, message, fixes)
+	v.Pass.report(recv, message, fixes)
 
 	return true
 }

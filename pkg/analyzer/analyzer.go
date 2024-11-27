@@ -62,21 +62,20 @@ var (
 // Run applies the analyzer to a package.
 func run(pass *analysis.Pass) (any, error) {
 	// Read the list of excluded types from the file specified by the "excluded" flag.
-	excludes, err := ReadExcludes(Excludes)
+	excludes, err := ReadExcludes(osFS{}, Excludes)
 	if err != nil {
 		return nil, err
 	}
 
-	v := visitor.Run{
-		Visitor: visitor.Visitor{
-			Pass:     pass,
+	visitor.Run(
+		visitor.Visitor{
+			Pass:     (*visitor.Pass)(pass),
 			Excludes: excludes,
 		},
-		ZeroTrace: ZeroTrace,
-		Basic:     Basic,
-		Generated: Generated,
-	}
-	v.Run()
+		ZeroTrace,
+		Basic,
+		Generated,
+	)
 
 	return any(nil), nil
 }

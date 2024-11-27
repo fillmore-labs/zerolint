@@ -18,22 +18,23 @@ package analyzer
 
 import (
 	"bufio"
-	"os"
+	"fmt"
+	"io/fs"
 
 	"fillmore-labs.com/zerolint/pkg/set"
 )
 
 // ReadExcludes reads zero-sized types excluded from analysis from a file and returns them as a set.
-func ReadExcludes(name string) (set.Set[string], error) {
+func ReadExcludes(fsys fs.FS, name string) (set.Set[string], error) {
 	excludes := set.New[string]()
 
-	if Excludes == "" {
+	if name == "" {
 		return excludes, nil
 	}
 
-	file, err := os.Open(name)
+	file, err := fsys.Open(name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't open excludes from %q: %w", name, err)
 	}
 	defer file.Close()
 
@@ -46,7 +47,7 @@ func ReadExcludes(name string) (set.Set[string], error) {
 		excludes.Insert(string(expr))
 	}
 	if err2 := scanner.Err(); err2 != nil {
-		return nil, err2
+		return nil, fmt.Errorf("error scanning %q: %w", name, err2)
 	}
 
 	return excludes, nil
