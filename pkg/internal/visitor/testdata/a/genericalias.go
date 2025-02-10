@@ -16,10 +16,24 @@
 
 package a
 
-type embedded[T any] struct{ _ T }
+import "fmt"
 
-func TypeParam() {
-	_ = &embedded[int]{}
+type GA[T any] struct {
+	_ T
+}
 
-	_ = &embedded[empty]{} // want "address of zero-size variable"
+type GB[T any] = GA[T]
+
+type Ety = struct{}
+
+func Check(x any) {
+	switch x.(type) {
+	case *GB[Ety]: // want "pointer to zero-sized type"
+		fmt.Println("*GB[Ety]")
+	}
+
+	switch x.(type) {
+	case *GA[Ety]:
+		fmt.Println("*GA[Ety]")
+	}
 }

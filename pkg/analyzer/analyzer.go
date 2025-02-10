@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:gochecknoglobals
 package analyzer
 
 import (
@@ -30,7 +31,7 @@ Pointer to zero-length variables carry very little information and
 can often be avoided.`
 )
 
-var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
+var Analyzer = &analysis.Analyzer{
 	Name:     Name,
 	Doc:      Doc,
 	URL:      "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/analyzer",
@@ -47,16 +48,16 @@ func init() { //nolint:gochecknoinits
 
 var (
 	// Excludes is a list of types to exclude from the analysis.
-	Excludes string //nolint:gochecknoglobals
+	Excludes string
 
 	// ZeroTrace enables tracing of found zero-sized types.
-	ZeroTrace bool //nolint:gochecknoglobals
+	ZeroTrace bool
 
 	// Basic enables basic analysis only.
-	Basic bool //nolint:gochecknoglobals
+	Basic bool
 
 	// Generated enables checking generated files.
-	Generated bool //nolint:gochecknoglobals
+	Generated bool
 )
 
 // run applies the analyzer to a package.

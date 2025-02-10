@@ -14,38 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package a
 
-import (
-	"testing"
+import "fmt"
 
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
-)
+type GA[T any] struct {
+	_ T
+}
 
-func TestAnalyzer(t *testing.T) { //nolint:tparallel
-	t.Parallel()
+type GB[T any] = GA[T]
 
-	dir := analysistest.TestData()
+type Ety = struct{}
 
-	type args struct {
-		excludes string
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{"basic", args{dir + "/excluded.txt"}},
+func Check(x any) {
+	switch x.(type) {
+	case GB[Ety]: // want "pointer to zero-sized type"
+		fmt.Println("*GB[Ety]")
 	}
 
-	for _, tt := range tests { //nolint:paralleltest
-		a := analyzer.Analyzer
-
-		analyzer.Basic = true
-		analyzer.Excludes = tt.args.excludes
-
-		t.Run(tt.name, func(t *testing.T) {
-			analysistest.Run(t, dir, a, "go.test/basic")
-		})
+	switch x.(type) {
+	case *GA[Ety]:
+		fmt.Println("*GA[Ety]")
 	}
 }

@@ -83,7 +83,7 @@ func (v Visitor) getComparisonInfo(t types.Type) comparisonInfo {
 
 // comparisonMessage determines the appropriate message for comparison of two pointers.
 func comparisonMessage(xType, yType types.Type) string {
-	if types.Identical(xType, yType) {
+	if xType == yType {
 		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", xType)
 	}
 
@@ -92,10 +92,9 @@ func comparisonMessage(xType, yType types.Type) string {
 
 // comparisonIMessage determines the appropriate message for pointer comparison.
 func comparisonIMessage(zType, withType types.Type, isInterface bool) string {
-	var isIf string
 	if isInterface {
-		isIf = "interface "
+		return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface %q", zType, withType)
 	}
 
-	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with %s%q", zType, isIf, withType)
+	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with %q", zType, withType)
 }

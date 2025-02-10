@@ -19,6 +19,8 @@ package a
 type embedded[T any] struct{ _ T }
 
 func TypeParam() {
+	type empty struct{}
+
 	_ = &embedded[int]{}
 
 	_ = embedded[empty]{} // want "address of zero-size variable"

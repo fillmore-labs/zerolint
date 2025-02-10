@@ -14,38 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package a
 
-import (
-	"testing"
+type embedded[T any] struct{ _ T }
 
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
-)
+func TypeParam() {
+	type empty struct{}
 
-func TestAnalyzer(t *testing.T) { //nolint:tparallel
-	t.Parallel()
+	_ = &embedded[int]{}
 
-	dir := analysistest.TestData()
-
-	type args struct {
-		excludes string
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{"basic", args{dir + "/excluded.txt"}},
-	}
-
-	for _, tt := range tests { //nolint:paralleltest
-		a := analyzer.Analyzer
-
-		analyzer.Basic = true
-		analyzer.Excludes = tt.args.excludes
-
-		t.Run(tt.name, func(t *testing.T) {
-			analysistest.Run(t, dir, a, "go.test/basic")
-		})
-	}
+	_ = &embedded[empty]{} // want "address of zero-size variable"
 }
