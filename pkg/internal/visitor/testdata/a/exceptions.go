@@ -14,13 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package visitor
+package a
 
-import (
-	"go/ast"
-)
+func Exceptions() {
+	m := make([]int, 0)
+	clear(m)
 
-// visitFile checks for generated files.
-func (v *visitorInternal) visitFile(n *ast.File) bool {
-	return !v.gen.Has(n)
+	_ = new(*int)
+
+	_ = 0 == 0
+	_ = error(nil) == error(nil)
 }

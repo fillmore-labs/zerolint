@@ -18,36 +18,23 @@ package visitor
 
 import (
 	"go/ast"
-
-	"fillmore-labs.com/zerolint/pkg/internal/set"
-	"golang.org/x/tools/go/analysis"
 )
 
-// Visitor is an AST visitor for analyzing usage of pointers to zero-size variables.
-type Visitor struct {
-	Pass     *analysis.Pass
-	Excludes set.Set[string]
-	Detected set.Set[string]
-}
-
 // visitBasic is the main functions called by inspector.Nodes for basic analysis.
-func (v Visitor) visitBasic(x ast.Node, push bool) bool {
+func (v *visitorInternal) visitBasic(n ast.Node, push bool) (proceed bool) {
 	if !push {
 		return true
 	}
 
-	switch x := x.(type) {
+	switch n := n.(type) {
 	case *ast.BinaryExpr:
-		return v.visitBinary(x)
+		return v.visitBinary(n)
 
 	case *ast.CallExpr:
-		return v.visitCallBasic(x)
-
-	case *ast.FuncDecl:
-		return v.visitFunc(x)
+		return v.visitCallBasic(n)
 
 	case *ast.File:
-		return v.visitFile(x)
+		return v.visitFile(n)
 
 	default:
 		return true
@@ -55,26 +42,26 @@ func (v Visitor) visitBasic(x ast.Node, push bool) bool {
 }
 
 // visit is the main functions called by inspector.Nodes for full analysis.
-func (v Visitor) visit(x ast.Node, push bool) bool {
+func (v *visitorInternal) visit(n ast.Node, push bool) (proceed bool) {
 	if !push {
 		return true
 	}
 
-	switch x := x.(type) {
+	switch n := n.(type) {
 	case *ast.StarExpr:
-		return v.visitStar(x)
+		return v.visitStar(n)
 
 	case *ast.UnaryExpr:
-		return v.visitUnary(x)
+		return v.visitUnary(n)
 
 	case *ast.BinaryExpr:
-		return v.visitBinary(x)
+		return v.visitBinary(n)
 
 	case *ast.CallExpr:
-		return v.visitCall(x)
+		return v.visitCall(n)
 
 	case *ast.File:
-		return v.visitFile(x)
+		return v.visitFile(n)
 
 	default:
 		return true

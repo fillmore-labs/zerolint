@@ -14,13 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package visitor
+package a
 
-import (
-	"go/ast"
-)
+import "fmt"
 
-// visitFile checks for generated files.
-func (v *visitorInternal) visitFile(n *ast.File) bool {
-	return !v.gen.Has(n)
+type GA[T any] struct {
+	_ T
+}
+
+type GB[T any] = GA[T]
+
+type Ety = struct{}
+
+func Check(x any) {
+	switch x.(type) {
+	case GB[Ety]: // want "pointer to zero-sized type"
+		fmt.Println("*GB[Ety]")
+	}
+
+	switch x.(type) {
+	case *GA[Ety]:
+		fmt.Println("*GA[Ety]")
+	}
 }

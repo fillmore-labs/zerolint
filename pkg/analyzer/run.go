@@ -27,36 +27,30 @@ import (
 // NewRun returns a configurable function for the Run field of [Analyzer].
 func NewRun(opts ...Option) func(*analysis.Pass) (any, error) {
 	option := options{
-		logger: log.Default(),
+		Logger: log.Default(),
 	}
 	for _, opt := range opts {
 		opt.apply(&option)
 	}
 
-	return func(pass *analysis.Pass) (any, error) {
-		visitor.Run(
-			option.logger,
-			visitor.Visitor{
-				Pass:     pass,
-				Excludes: option.excludes,
-			},
-			option.zeroTrace,
-			option.basic,
-			option.generated,
-		)
+	v := visitor.New(option)
 
-		return any(nil), nil
+	return func(pass *analysis.Pass) (any, error) {
+		res, err := v.Run(pass)
+
+		if option.ZeroTrace && v.HasDetected() {
+			option.Logger.Printf("found zero-sized types in %q:\n", v.Pass.Pkg.Path())
+			for name := range v.AllDetected() {
+				option.Logger.Printf("- %s\n", name)
+			}
+		}
+
+		return res, err
 	}
 }
 
 // options defines configurable parameters for the linter.
-type options struct {
-	logger    *log.Logger
-	excludes  set.Set[string]
-	zeroTrace bool
-	basic     bool
-	generated bool
-}
+type options = visitor.Options
 
 // Option defines configurations for [NewRun].
 type Option interface {
@@ -73,7 +67,7 @@ type loggerOption struct {
 }
 
 func (o loggerOption) apply(opts *options) {
-	opts.logger = o.logger
+	opts.Logger = o.logger
 }
 
 // WithExcludes is an [Option] to configure the excluded types.
@@ -86,11 +80,11 @@ type excludesOption struct {
 }
 
 func (o excludesOption) apply(opts *options) {
-	if opts.excludes == nil {
-		opts.excludes = set.New[string]()
+	if opts.Excludes == nil {
+		opts.Excludes = set.New[string]()
 	}
 	for _, exclude := range o.excludes {
-		opts.excludes.Insert(exclude)
+		opts.Excludes.Insert(exclude)
 	}
 }
 
@@ -104,20 +98,20 @@ type zeroTraceOption struct {
 }
 
 func (o zeroTraceOption) apply(opts *options) {
-	opts.zeroTrace = o.zeroTrace
+	opts.ZeroTrace = o.zeroTrace
 }
 
-// WithBasic is an [Option] to configure only basic linting.
-func WithBasic(basic bool) Option { //nolint:ireturn
-	return basicOption{basic: basic}
+// WithFull is an [Option] to configure full linting.
+func WithFull(full bool) Option { //nolint:ireturn
+	return fullOption{full: full}
 }
 
-type basicOption struct {
-	basic bool
+type fullOption struct {
+	full bool
 }
 
-func (o basicOption) apply(opts *options) {
-	opts.basic = o.basic
+func (o fullOption) apply(opts *options) {
+	opts.Full = o.full
 }
 
 // WithGenerated is an [Option] to configure linting of generated files.
@@ -130,5 +124,5 @@ type generatedOption struct {
 }
 
 func (o generatedOption) apply(opts *options) {
-	opts.generated = o.generated
+	opts.Generated = o.generated
 }
