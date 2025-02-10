@@ -18,10 +18,23 @@ package a
 
 import "encoding/json"
 
+type myDecoder1 struct {
+	json.Decoder
+}
+
+type myDecoder2 struct {
+	*json.Decoder
+}
+
 func IgnoreJson() {
 	empty := struct{}{}
 
 	_ = json.Unmarshal(nil, &empty)
 	_ = (*json.Decoder)(nil).Decode(&empty)
 	_ = json.NewDecoder(nil).Decode(&empty)
+	_ = (*myDecoder1)(nil).Decode(&empty)
+	_ = (&myDecoder1{}).Decode(&empty)
+	_ = myDecoder2{}.Decode(&empty)
+
+	_, _ = json.Marshal(&empty) // want "address of zero-size variable"
 }

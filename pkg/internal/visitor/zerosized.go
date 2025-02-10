@@ -16,7 +16,10 @@
 
 package visitor
 
-import "go/types"
+import (
+	"go/types"
+	"iter"
+)
 
 // zeroSizedTypePointer checks whether t is a pointer to a zero-sized type.
 // It returns the elements type and true if it is, false otherwise.
@@ -50,37 +53,26 @@ func zeroSized(t types.Type) bool {
 
 	case *types.Struct:
 		// struct type, check if all fields have zero-sized types.
-		for i := range x.NumFields() {
-			if !zeroSized(x.Field(i).Type()) {
+		for f := range allFields(x) {
+			if !zeroSized(f.Type()) {
 				return false
 			}
 		}
 
 		return true
-
-	/* not really useful and doesn't work with '-fix':
-	case *types.Interface:
-		// interface type, check if any of the embedded types are zero-sized.
-		for i := 0; i < x.NumEmbeddeds(); i++ {
-			if zeroSized(x.EmbeddedType(i)) {
-				return true
-			}
-		}
-
-		return false
-
-	case *types.Union:
-		// union type, check all variants are zero-sized.
-		for i := 0; i < x.Len(); i++ {
-			if !zeroSized(x.Term(i).Type()) {
-				return false
-			}
-		}
-
-		return true
-	*/
 
 	default:
 		return false
+	}
+}
+
+// allFields returns an iterator over all fields of the struct.
+func allFields(s *types.Struct) iter.Seq[*types.Var] {
+	return func(yield func(*types.Var) bool) {
+		for i := range s.NumFields() {
+			if !yield(s.Field(i)) {
+				break
+			}
+		}
 	}
 }

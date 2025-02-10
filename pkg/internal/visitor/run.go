@@ -33,6 +33,9 @@ func Run(logger *log.Logger, visitor Visitor, zeroTrace, basic, generated bool) 
 		logger.Fatal("inspector result missing")
 	}
 
+	if visitor.Excludes == nil {
+		visitor.Excludes = set.New[string]()
+	}
 	visitor.Excludes.Insert("runtime.Func")
 	visitor.Detected = set.New[string]()
 
