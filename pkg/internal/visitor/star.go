@@ -23,8 +23,8 @@ import (
 )
 
 // visitUnary checks expressions in form *x.
-func (v Visitor) visitStar(x *ast.StarExpr) bool {
-	t := v.Pass.TypesInfo.TypeOf(x.X)
+func (v *visitorInternal) visitStar(n *ast.StarExpr) bool {
+	t := v.Pass.TypesInfo.TypeOf(n.X)
 	var message string
 	switch p, ok := t.Underlying().(*types.Pointer); {
 	case ok && v.zeroSizedType(p.Elem()):
@@ -41,8 +41,8 @@ func (v Visitor) visitStar(x *ast.StarExpr) bool {
 		return true
 	}
 
-	fixes := v.removeOp(x, x.X)
-	v.report(x, message, fixes)
+	fixes := v.removeOp(n, n.X)
+	v.report(n, message, fixes)
 
 	return fixes == nil
 }

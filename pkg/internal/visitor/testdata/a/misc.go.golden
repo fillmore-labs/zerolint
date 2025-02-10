@@ -32,6 +32,8 @@ type A [0]string
 
 type B = A
 
+var _ = B{} == A{} // want "comparison of pointers to zero-size variables" "address of zero-size variable" "address of zero-size variable"
+
 func (B) Combine(_ B) B { // want "pointer to zero-sized type" "pointer to zero-sized type" "pointer to zero-sized type"
 	return B{} // want "address of zero-size variable"
 }
@@ -45,6 +47,8 @@ type greeterAlias = greeter // want "pointer to zero-sized type"
 func (g greeterAlias) String() string {
 	return "hello, world"
 }
+
+type generatedAlias = *generated
 
 var _ fmt.Stringer = greeter{} // want "address of zero-size variable"
 

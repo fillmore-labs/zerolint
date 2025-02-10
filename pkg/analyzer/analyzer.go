@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:gochecknoglobals
 package analyzer
 
 import (
@@ -30,7 +31,8 @@ Pointer to zero-length variables carry very little information and
 can often be avoided.`
 )
 
-var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
+// The Analyzer checks for usage of pointers to zero-length variables.
+var Analyzer = &analysis.Analyzer{
 	Name:     Name,
 	Doc:      Doc,
 	URL:      "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/analyzer",
@@ -38,26 +40,26 @@ var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
+var (
+	// Excludes is a file containing a list of types to exclude from the analysis.
+	Excludes string
+
+	// ZeroTrace enables tracing of found zero-sized types.
+	ZeroTrace bool
+
+	// Basic enables basic analysis only.
+	Basic bool
+
+	// Generated enables checking generated files.
+	Generated bool
+)
+
 func init() { //nolint:gochecknoinits
 	Analyzer.Flags.StringVar(&Excludes, "excluded", "", "read excluded types from this file")
 	Analyzer.Flags.BoolVar(&ZeroTrace, "zerotrace", false, "trace found zero-sized types")
 	Analyzer.Flags.BoolVar(&Basic, "basic", false, "basic analysis only")
 	Analyzer.Flags.BoolVar(&Generated, "generated", false, "check generated files")
 }
-
-var (
-	// Excludes is a list of types to exclude from the analysis.
-	Excludes string //nolint:gochecknoglobals
-
-	// ZeroTrace enables tracing of found zero-sized types.
-	ZeroTrace bool //nolint:gochecknoglobals
-
-	// Basic enables basic analysis only.
-	Basic bool //nolint:gochecknoglobals
-
-	// Generated enables checking generated files.
-	Generated bool //nolint:gochecknoglobals
-)
 
 // run applies the analyzer to a package.
 func run(pass *analysis.Pass) (any, error) {

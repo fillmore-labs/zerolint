@@ -16,12 +16,24 @@
 
 package a
 
-import "encoding/json"
+import "fmt"
 
-func IgnoreJson() {
-	empty := struct{}{}
+type GA[T any] struct {
+	_ T
+}
 
-	_ = json.Unmarshal(nil, &empty)
-	_ = (*json.Decoder)(nil).Decode(&empty)
-	_ = json.NewDecoder(nil).Decode(&empty)
+type GB[T any] = GA[T]
+
+type Ety = struct{}
+
+func Check(x any) {
+	switch x.(type) {
+	case *GB[Ety]: // want "pointer to zero-sized type"
+		fmt.Println("*GB[Ety]")
+	}
+
+	switch x.(type) {
+	case *GA[Ety]:
+		fmt.Println("*GA[Ety]")
+	}
 }

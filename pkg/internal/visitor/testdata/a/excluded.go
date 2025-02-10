@@ -14,13 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package visitor
+package a
 
-import (
-	"go/ast"
-)
+type candidate[T any] struct{ _ T } //zerolint:exclude
 
-// visitFile checks for generated files.
-func (v *visitorInternal) visitFile(n *ast.File) bool {
-	return !v.gen.Has(n)
+func Excluded() {
+	_ = &candidate[[0]string]{}
 }

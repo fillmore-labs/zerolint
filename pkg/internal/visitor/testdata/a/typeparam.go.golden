@@ -14,13 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package visitor
+package a
 
-import (
-	"go/ast"
-)
+type embedded[T any] struct{ _ T }
 
-// visitFile checks for generated files.
-func (v *visitorInternal) visitFile(n *ast.File) bool {
-	return !v.gen.Has(n)
+func TypeParam() {
+	type empty struct{}
+
+	_ = &embedded[int]{} == &embedded[int]{}
+
+	_ = embedded[empty]{} // want "address of zero-size variable"
 }
