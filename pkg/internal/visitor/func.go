@@ -24,13 +24,13 @@ import (
 )
 
 // visitFunc checks if the function declaration has a receiver of a pointer to a zero-sized type.
-func (v Visitor) visitFunc(x *ast.FuncDecl) bool {
+func (v *visitorInternal) visitFunc(n *ast.FuncDecl) bool {
 	// Only process methods.
-	if x.Recv == nil || len(x.Recv.List) != 1 {
+	if n.Recv == nil || len(n.Recv.List) != 1 {
 		return true
 	}
 
-	recv := x.Recv.List[0]
+	recv := n.Recv.List[0]
 	recvType := v.Pass.TypesInfo.TypeOf(recv.Type)
 	elem, ok := v.zeroSizedTypePointer(recvType)
 	if !ok { // Not a pointer receiver or no pointer to a zero-sized type.

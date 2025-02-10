@@ -17,6 +17,7 @@
 package basic
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -25,12 +26,6 @@ type myError struct{}
 
 func (*myError) Error() string { // want "method receiver is pointer to zero-size variable"
 	return "my error"
-}
-
-type NoError struct{}
-
-func (*NoError) Error() string {
-	return "no error"
 }
 
 var (
@@ -49,6 +44,15 @@ func Exported() {
 		fmt.Println("equal")
 	}
 
+	var err *myError
+	_ = errors.As(ErrOne, &err)
+
+	var u myError
+	_ = json.Unmarshal(nil, &u)
+	d := json.NewDecoder(nil)
+	_ = d.Decode(&u)
+	_ = json.NewDecoder(nil).Decode(&u)
+
 	if ErrOne == ErrTwo { // want "comparison of pointers to zero-size variables"
 		fmt.Println("equal")
 	}
@@ -57,3 +61,11 @@ func Exported() {
 		fmt.Println("not equal")
 	}
 }
+
+type D struct{ _ int }
+
+func (*D) String() string {
+	return "hello, world"
+}
+
+var _ fmt.Stringer = (*D)(nil)

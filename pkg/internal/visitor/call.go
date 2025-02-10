@@ -24,58 +24,62 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// visitCallValue checks for encoding/json#Decoder.Decode, json.Unmarshal, errors.Is and errors.As.
-func (v Visitor) visitCallBasic(x *ast.CallExpr) bool { //nolint:cyclop
-	fun, ok := ast.Unparen(x.Fun).(*ast.SelectorExpr)
-	if !ok {
-		return true
-	}
+// visitCall checks for type casts T(x), errors.Is(x, y), errors.As(x, y) and new(T).
+func (v *visitorInternal) visitCall(n *ast.CallExpr) bool {
+	switch funType := v.Pass.TypesInfo.Types[n.Fun]; {
+	case funType.IsBuiltin(): // Check for calls to new(T).
+		return v.visitNew(n)
 
-	if sel, ok := v.Pass.TypesInfo.Selections[fun]; ok {
-		// Delegate selections
-		return visitSelectionCall(sel)
-	}
+	case funType.IsType(): // Check for type casts T(...).
+		return v.visitCast(funType.Type, n)
 
-	// qualified identifiers
-
-	pkg, ok := pkgName(v.Pass, fun)
-	if !ok {
-		return true
-	}
-
-	switch path := pkg.Imported().Path(); {
-	case path == "encoding/json" && fun.Sel.Name == "Unmarshal":
-		return false // Do not report pointers in json.Unmarshal(..., ...).
-
-	case len(x.Args) != 2 || path != "errors" && path != "golang.org/x/exp/errors":
-		return true
-
-	case fun.Sel.Name == "As":
-		return false // Do not report pointers in errors.As(..., ...)
-
-	case fun.Sel.Name == "Is":
-		// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
-		return v.visitCmp(x, x.Args[0], x.Args[1])
+	case funType.IsValue(): // Check for errors.Is(x, y) and errors.As(x, y).
+		return v.visitCallBasic(n)
 
 	default:
 		return true
 	}
 }
 
-func visitSelectionCall(sel *types.Selection) bool {
-	if sel.Kind() != types.MethodVal {
+// visitCallBasic checks for encoding/json#Decoder.Decode, json.Unmarshal, errors.Is and errors.As.
+func (v *visitorInternal) visitCallBasic(n *ast.CallExpr) bool { //nolint:cyclop
+	sel, ok := ast.Unparen(n.Fun).(*ast.SelectorExpr)
+	if !ok {
 		return true
 	}
 
-	if sel.Recv().String() == "*encoding/json.Decoder" && sel.Obj().Name() == "Decode" {
-		return false // Do not report pointers in json.Decoder#Decode
+	if sel, ok := v.Pass.TypesInfo.Selections[sel]; ok {
+		// Delegate selections like encoding/json#Decoder.Decode
+		return visitSelectionCall(sel)
 	}
 
-	return true
+	// qualified identifiers
+	pkg, ok := pkgName(v.Pass, sel)
+	if !ok {
+		return true
+	}
+
+	switch path := pkg.Imported().Path(); {
+	case path == "encoding/json" && sel.Sel.Name == "Unmarshal":
+		return false // Do not report pointers in json.Unmarshal(..., ...).
+
+	case len(n.Args) != 2 || path != "errors" && path != "golang.org/x/exp/errors":
+		return true
+
+	case sel.Sel.Name == "As":
+		return false // Do not report pointers in errors.As(..., ...)
+
+	case sel.Sel.Name == "Is":
+		// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
+		return v.visitCmp(n, n.Args[0], n.Args[1])
+
+	default:
+		return true
+	}
 }
 
-func pkgName(pass *analysis.Pass, fun *ast.SelectorExpr) (*types.PkgName, bool) {
-	id, ok := fun.X.(*ast.Ident)
+func pkgName(pass *analysis.Pass, sel *ast.SelectorExpr) (*types.PkgName, bool) {
+	id, ok := sel.X.(*ast.Ident)
 	if !ok {
 		return nil, false
 	}
@@ -88,29 +92,54 @@ func pkgName(pass *analysis.Pass, fun *ast.SelectorExpr) (*types.PkgName, bool) 
 	return pkg, true
 }
 
-// visitCall checks for type casts T(x), errors.Is(x, y), errors.As(x, y) and new(T).
-func (v Visitor) visitCall(x *ast.CallExpr) bool {
-	switch funType := v.Pass.TypesInfo.Types[x.Fun]; {
-	case funType.IsType(): // Check for type casts T(...).
-		return v.visitCast(funType.Type, x)
-
-	case funType.IsBuiltin(): // Check for calls to new(T).
-		return v.visitNew(x)
-
-	case funType.IsValue(): // Check for errors.Is(x, y) and errors.As(x, y).
-		return v.visitCallBasic(x)
-
-	default:
+func visitSelectionCall(sel *types.Selection) bool {
+	if sel.Kind() != types.MethodVal {
 		return true
 	}
+
+	fun, ok := sel.Obj().(*types.Func)
+	if !ok {
+		return true
+	}
+
+	elem, ok := receiverPointerToNamed(fun)
+	if !ok {
+		return true
+	}
+
+	// check for method call "Decode" on receiver *encoding/json.Decoder
+	if fun.Name() == "Decode" && elem.Obj().Pkg().Path() == "encoding/json" && elem.Obj().Name() == "Decoder" {
+		return false // Do not report pointers in json.Decoder#Decode
+	}
+
+	return true
+}
+
+func receiverPointerToNamed(fun *types.Func) (*types.Named, bool) {
+	recv := fun.Signature().Recv()
+	if recv == nil {
+		return nil, false
+	}
+
+	ptr, ok := types.Unalias(recv.Type()).(*types.Pointer)
+	if !ok {
+		return nil, false
+	}
+
+	elem, ok := ptr.Elem().(*types.Named)
+	if !ok {
+		return nil, false
+	}
+
+	return elem, true
 }
 
 // visitCast is called for type casts T(nil).
-func (v Visitor) visitCast(t types.Type, x *ast.CallExpr) bool {
-	if len(x.Args) != 1 {
+func (v *visitorInternal) visitCast(t types.Type, n *ast.CallExpr) bool {
+	if len(n.Args) != 1 {
 		return true
 	}
-	if n, ok := v.Pass.TypesInfo.Types[x.Args[0]]; !ok || !n.IsNil() {
+	if n, ok := v.Pass.TypesInfo.Types[n.Args[0]]; !ok || !n.IsNil() {
 		return true
 	}
 
@@ -121,34 +150,34 @@ func (v Visitor) visitCast(t types.Type, x *ast.CallExpr) bool {
 
 	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", elem)
 	var fixes []analysis.SuggestedFix
-	if s, ok := ast.Unparen(x.Fun).(*ast.StarExpr); ok {
-		fixes = v.makePure(x, s.X)
+	if s, ok := ast.Unparen(n.Fun).(*ast.StarExpr); ok {
+		fixes = v.makePure(n, s.X)
 	}
 
-	v.report(x, message, fixes)
+	v.report(n, message, fixes)
 
 	return fixes == nil
 }
 
-// visitCast is called for calls to new(T).
-func (v Visitor) visitNew(x *ast.CallExpr) bool {
-	if len(x.Args) != 1 {
+// visitNew is called for calls to new(T).
+func (v *visitorInternal) visitNew(n *ast.CallExpr) bool {
+	if len(n.Args) != 1 {
 		return true
 	}
-	fun, ok := ast.Unparen(x.Fun).(*ast.Ident)
+	fun, ok := ast.Unparen(n.Fun).(*ast.Ident)
 	if !ok || fun.Name != "new" {
 		return true
 	}
 
-	arg := x.Args[0] // new(arg).
+	arg := n.Args[0] // new(arg).
 	argType := v.Pass.TypesInfo.TypeOf(arg)
 	if !v.zeroSizedType(argType) {
 		return true
 	}
 
 	message := fmt.Sprintf("new called on zero-sized type %q", argType)
-	fixes := v.makePure(x, arg)
-	v.report(x, message, fixes)
+	fixes := v.makePure(n, arg)
+	v.report(n, message, fixes)
 
 	return false
 }

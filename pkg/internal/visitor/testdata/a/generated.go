@@ -13,13 +13,12 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
+// Code generated testing DO NOT EDIT.
 
 package a
 
-type embedded[T any] struct{ _ T }
+type generated struct{}
 
-func TypeParam() {
-	_ = &embedded[int]{}
-
-	_ = &embedded[empty]{} // want "address of zero-size variable"
+func (*generated) Error() string {
+	return "an error"
 }

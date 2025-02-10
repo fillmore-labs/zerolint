@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//go:debug gotypesalias=1
-
 // This is the main program for the zerolint linter.
 package main
 
