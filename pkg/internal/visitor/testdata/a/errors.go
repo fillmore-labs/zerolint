@@ -38,7 +38,7 @@ func IgnoreErrors() {
 		fmt.Println("nil")
 	}
 
-	var oneErr typedError[int] // want "pointer to zero-sized type"
+	var oneErr *typedError[int] // want "pointer to zero-sized type"
 	if errors.As(ErrOne, &oneErr) {
 		fmt.Println("ErrOne is typedError[int]")
 	}
@@ -56,6 +56,8 @@ func IgnoreErrors() {
 		fmt.Println("equal")
 	}
 
-	var err typedError[int] // want "pointer to zero-sized type"
+	errors.Is(ErrOne, error(ErrTwo)) // want "comparison of pointer to zero-size variable"
+
+	var err *typedError[int] // want "pointer to zero-sized type"
 	_ = errors.As(ErrOne, &err)
 }
