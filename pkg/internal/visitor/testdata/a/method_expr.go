@@ -14,13 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package visitor
+package a
 
-import (
-	"go/ast"
-)
+type m1 struct{}
 
-// visitFile checks for generated files.
-func (v *visitorInternal) visitFile(n *ast.File) bool {
-	return !v.gen.Has(n)
-}
+func (m *m1) f() *m1 { return m } // want "pointer to zero-sized type" "pointer to zero-sized type"
+
+var _ = (*m1).f(&m1{}) // want "method expression receiver is pointer to zero-size variable" "pointer to zero-sized type" "address of zero-size variable"
+
+type m2 struct{} //zerolint:exclude
+
+func (m *m2) f() *m2 { return m }
+
+var _ = (*m2).f(nil) // Would be broken by -fix.

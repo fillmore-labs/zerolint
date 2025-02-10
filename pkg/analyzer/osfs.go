@@ -26,5 +26,5 @@ type osFS struct{}
 var _ fs.FS = osFS{}
 
 func (osFS) Open(name string) (fs.File, error) {
-	return os.Open(name)
+	return os.Open(name) //nolint:gosec
 }

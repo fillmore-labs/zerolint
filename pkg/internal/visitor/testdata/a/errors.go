@@ -20,10 +20,10 @@ import (
 	"errors"
 	"fmt"
 
+	. "errors"
+
 	xerrors "golang.org/x/exp/errors"
 )
-
-type empty struct{}
 
 type myErrors struct{}
 
@@ -38,7 +38,7 @@ func IgnoreErrors() {
 		fmt.Println("nil")
 	}
 
-	var oneErr typedError[int] // want "pointer to zero-sized type"
+	var oneErr *typedError[int] // want "pointer to zero-sized type"
 	if errors.As(ErrOne, &oneErr) {
 		fmt.Println("ErrOne is typedError[int]")
 	}
@@ -46,6 +46,9 @@ func IgnoreErrors() {
 	func() {
 		errors := myErrs
 		if errors.Is(ErrOne, ErrTwo) {
+			fmt.Println("one is two")
+		}
+		if Is(ErrOne, ErrTwo) { // want "comparison of pointers to zero-size variables"
 			fmt.Println("one is two")
 		}
 	}()
@@ -56,6 +59,10 @@ func IgnoreErrors() {
 		fmt.Println("equal")
 	}
 
-	var err typedError[int] // want "pointer to zero-sized type"
+	errors.Is(ErrOne, error(ErrTwo)) // want "comparison of pointer to zero-size variable"
+
+	var err *typedError[int] // want "pointer to zero-sized type"
 	_ = errors.As(ErrOne, &err)
+
+	_ = errors.Join(ErrOne, ErrTwo)
 }
