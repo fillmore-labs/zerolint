@@ -14,17 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package a
 
-import (
-	"io/fs"
-	"os"
-)
+type embedded[T any] struct{ _ T }
 
-type osFS struct{}
+func TypeParam() {
+	type empty struct{}
 
-var _ fs.FS = osFS{}
+	_ = &embedded[int]{} == &embedded[int]{}
 
-func (osFS) Open(name string) (fs.File, error) {
-	return os.Open(name) //nolint:gosec
+	_ = embedded[empty]{} // want "address of zero-size variable"
 }

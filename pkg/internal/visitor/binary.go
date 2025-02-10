@@ -22,12 +22,12 @@ import (
 )
 
 // visitBinary checks for equality (==) and inequality (!=) comparisons in binary expressions.
-func (v Visitor) visitBinary(x *ast.BinaryExpr) bool {
+func (v *Visitor) visitBinary(n *ast.BinaryExpr) bool {
 	// Only process equality and inequality operations.
-	if x.Op != token.EQL && x.Op != token.NEQ {
+	if n.Op != token.EQL && n.Op != token.NEQ {
 		return true
 	}
 
 	// Delegate to visitCmp for further analysis of the comparison.
-	return v.visitCmp(x, x.X, x.Y)
+	return v.visitCmp(n, n.X, n.Y)
 }

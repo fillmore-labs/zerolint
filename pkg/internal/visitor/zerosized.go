@@ -16,11 +16,17 @@
 
 package visitor
 
-import "go/types"
+import (
+	"go/types"
+	"iter"
+)
 
 // zeroSizedTypePointer checks whether t is a pointer to a zero-sized type.
-// It returns the elements type and true if it is, false otherwise.
-func (v Visitor) zeroSizedTypePointer(t types.Type) (types.Type, bool) {
+// It returns the element's type and true if it is zero-sized, false otherwise.
+func (v *Visitor) zeroSizedTypePointer(t types.Type) (types.Type, bool) {
+	if t == nil {
+		return nil, false
+	}
 	if p, ok := t.Underlying().(*types.Pointer); ok && v.zeroSizedType(p.Elem()) {
 		return p.Elem(), true
 	}
@@ -29,16 +35,23 @@ func (v Visitor) zeroSizedTypePointer(t types.Type) (types.Type, bool) {
 }
 
 // zeroSizedType determines whether t is a zero-sized type not excluded from detection.
-func (v Visitor) zeroSizedType(t types.Type) bool {
-	if !zeroSized(t) {
+func (v *Visitor) zeroSizedType(t types.Type) bool {
+	if t == nil || !zeroSized(t) {
 		return false
 	}
 
-	// zero-sized type, check if the type's name is in the Excludes set.
-	name := t.String()
-	v.Detected.Insert(name)
+	if n, ok := t.(*types.Named); ok {
+		// Check if declared in a generated file or excluded by comment
+		if tn := n.Obj(); v.ignored.Has(tn.Pos()) {
+			return false
+		}
+	}
 
-	return !v.Excludes.Has(name)
+	name := t.String()
+	v.detected.Insert(name)
+
+	// zero-sized type, check if the type's name is in the Excludes set.
+	return !v.excludes.Has(name)
 }
 
 // zeroSized determines whether t is provably a zero-sized type.
@@ -50,37 +63,26 @@ func zeroSized(t types.Type) bool {
 
 	case *types.Struct:
 		// struct type, check if all fields have zero-sized types.
-		for i := range x.NumFields() {
-			if !zeroSized(x.Field(i).Type()) {
+		for f := range allFields(x) {
+			if ft := f.Type(); ft == nil || !zeroSized(ft) {
 				return false
 			}
 		}
 
 		return true
-
-	/* not really useful and doesn't work with '-fix':
-	case *types.Interface:
-		// interface type, check if any of the embedded types are zero-sized.
-		for i := 0; i < x.NumEmbeddeds(); i++ {
-			if zeroSized(x.EmbeddedType(i)) {
-				return true
-			}
-		}
-
-		return false
-
-	case *types.Union:
-		// union type, check all variants are zero-sized.
-		for i := 0; i < x.Len(); i++ {
-			if !zeroSized(x.Term(i).Type()) {
-				return false
-			}
-		}
-
-		return true
-	*/
 
 	default:
 		return false
+	}
+}
+
+// allFields returns an iterator over all fields of the struct.
+func allFields(s *types.Struct) iter.Seq[*types.Var] {
+	return func(yield func(*types.Var) bool) {
+		for i := range s.NumFields() {
+			if !yield(s.Field(i)) {
+				break
+			}
+		}
 	}
 }

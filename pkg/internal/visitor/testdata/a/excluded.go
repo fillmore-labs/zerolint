@@ -14,17 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package a
 
-import (
-	"io/fs"
-	"os"
-)
+type candidate[T any] struct{ _ T } //zerolint:exclude
 
-type osFS struct{}
-
-var _ fs.FS = osFS{}
-
-func (osFS) Open(name string) (fs.File, error) {
-	return os.Open(name) //nolint:gosec
+func Excluded() {
+	_ = &candidate[[0]string]{}
 }

@@ -1,12 +1,19 @@
 ---
+version: "2"
+
 run:
   modules-download-mode: readonly
+
+formatters:
+  enable:
+    - gofumpt
+  settings:
+    gofumpt:
+      module-path: fillmore-labs.com/zerolint
+
 linters:
-  enable-all: true
+  default: all
   disable:
-    # deprecated
-    - exportloopref
-    # disabled
     - depguard
     - dupl
     - exhaustruct
@@ -15,41 +22,70 @@ linters:
     - varnamelen
     - wrapcheck
     - wsl
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-    settings:
-      shadow:
-        strict: true
-  testifylint:
-    enable-all: true
-    disable:
-      - require-error
-  ireturn:
-    allow:
-      - anon
-      - error
-      - empty
-      - stdlib
-      - generic
-  predeclared:
-    ignore: "new"
-issues:
-  exclude-rules:
-    - path: _test\.go$
-      linters:
-        - revive
-      text: "dot-imports"
-    - path: _test\.go$
-      linters:
-        - govet
-      text: "lostcancel"
-    - path: ^main\.go$
-      linters:
-        - gocheckcompilerdirectives
-      text: "go:debug"
-    - linters:
-        - govet
-      text: '^shadow: declaration of "(ctx|err|ok)" shadows declaration at line \d+$'
+  settings:
+    errcheck:
+      exclude-functions:
+        - (io/fs.File).Close
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+      settings:
+        shadow:
+          strict: true
+    testifylint:
+      enable-all: true
+      disable:
+        - require-error
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        - generic
+    predeclared:
+      ignore: ["new"]
+    revive:
+      rules:
+        - name: atomic
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+          exclude: ["TEST"]
+        - name: early-return
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: file-header
+          arguments:
+            - "Copyright 2024 Oliver Eikemeier. All Rights Reserved."
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters:
+          - govet
+        text: "lostcancel"
+      - path: ^main\.go$
+        linters:
+          - gocheckcompilerdirectives
+        text: "go:debug"
+      - linters:
+          - govet
+        text: '^shadow: declaration of "(ctx|err|ok)" shadows declaration at line \d+$'

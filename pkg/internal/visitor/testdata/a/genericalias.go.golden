@@ -14,17 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package a
 
-import (
-	"io/fs"
-	"os"
-)
+import "fmt"
 
-type osFS struct{}
+type GA[T any] struct {
+	_ T
+}
 
-var _ fs.FS = osFS{}
+type GB[T any] = GA[T]
 
-func (osFS) Open(name string) (fs.File, error) {
-	return os.Open(name) //nolint:gosec
+type Ety = struct{}
+
+func Check(x any) {
+	switch x.(type) {
+	case GB[Ety]: // want "pointer to zero-sized type"
+		fmt.Println("*GB[Ety]")
+	}
+
+	switch x.(type) {
+	case *GA[Ety]:
+		fmt.Println("*GA[Ety]")
+	}
 }

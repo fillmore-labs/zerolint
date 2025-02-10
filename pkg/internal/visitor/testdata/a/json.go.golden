@@ -14,17 +14,30 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package a
 
-import (
-	"io/fs"
-	"os"
-)
+import "encoding/json"
 
-type osFS struct{}
+type myDecoder1 struct {
+	json.Decoder
+}
 
-var _ fs.FS = osFS{}
+type myDecoder2 struct {
+	*json.Decoder
+}
 
-func (osFS) Open(name string) (fs.File, error) {
-	return os.Open(name) //nolint:gosec
+type myDecoder3 = *json.Decoder
+
+func IgnoreJson() {
+	empty := struct{}{}
+
+	_ = json.Unmarshal(nil, &empty)
+	_ = (*json.Decoder)(nil).Decode(&empty)
+	_ = json.NewDecoder(nil).Decode(&empty)
+	_ = (*myDecoder1)(nil).Decode(&empty)
+	_ = (&myDecoder1{}).Decode(&empty)
+	_ = myDecoder2{}.Decode(&empty)
+	_ = (myDecoder3)(nil).Decode(&empty)
+
+	_, _ = json.Marshal(empty) // want "address of zero-size variable"
 }

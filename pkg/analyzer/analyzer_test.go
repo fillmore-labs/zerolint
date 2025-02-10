@@ -23,22 +23,27 @@ import (
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
-func TestAnalyzer(t *testing.T) { //nolint:paralleltest
+func TestAnalyzer(t *testing.T) { //nolint:tparallel
+	t.Parallel()
+
 	dir := analysistest.TestData()
-	a := analyzer.Analyzer
 
-	analyzer.Basic = false
-	analyzer.Excludes = dir + "/excluded.txt"
+	type args struct {
+		excludes string
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{"basic", args{dir + "/excluded.txt"}},
+	}
 
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/a")
-}
+	for _, tt := range tests { //nolint:paralleltest
+		a := analyzer.Analyzer
+		analyzer.Excludes = tt.args.excludes
 
-func TestAnalyzerBasic(t *testing.T) { //nolint:paralleltest
-	dir := analysistest.TestData()
-	a := analyzer.Analyzer
-
-	analyzer.Basic = true
-	analyzer.Excludes = ""
-
-	analysistest.RunWithSuggestedFixes(t, dir, a, "go.test/basic")
+		t.Run(tt.name, func(t *testing.T) {
+			analysistest.Run(t, dir, a, "go.test/basic")
+		})
+	}
 }

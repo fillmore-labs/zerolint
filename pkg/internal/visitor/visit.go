@@ -17,33 +17,32 @@
 package visitor
 
 import (
-	"fmt"
 	"go/ast"
-
-	"golang.org/x/tools/go/analysis"
 )
 
-// visitFunc checks if the function declaration has a receiver of a pointer to a zero-sized type.
-func (v Visitor) visitFunc(x *ast.FuncDecl) bool {
-	// Only process methods.
-	if x.Recv == nil || len(x.Recv.List) != 1 {
+// visit is the main functions called by inspector.Nodes for analysis.
+func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) {
+	if !push {
 		return true
 	}
 
-	recv := x.Recv.List[0]
-	recvType := v.Pass.TypesInfo.TypeOf(recv.Type)
-	elem, ok := v.zeroSizedTypePointer(recvType)
-	if !ok { // Not a pointer receiver or no pointer to a zero-sized type.
+	switch n := n.(type) {
+	case *ast.StarExpr:
+		return v.visitStar(n)
+
+	case *ast.UnaryExpr:
+		return v.visitUnary(n)
+
+	case *ast.BinaryExpr:
+		return v.visitBinary(n)
+
+	case *ast.CallExpr:
+		return v.visitCall(n)
+
+	case *ast.File:
+		return v.visitFile(n)
+
+	default:
 		return true
 	}
-
-	var fixes []analysis.SuggestedFix
-	if s, ok := recv.Type.(*ast.StarExpr); ok {
-		fixes = v.removeOp(s, s.X)
-	}
-
-	message := fmt.Sprintf("method receiver is pointer to zero-size variable of type %q", elem)
-	v.report(recv, message, fixes)
-
-	return true
 }

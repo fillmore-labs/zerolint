@@ -21,6 +21,6 @@ import (
 )
 
 // visitFile checks for generated files.
-func (Visitor) visitFile(x *ast.File) bool {
-	return !ast.IsGenerated(x)
+func (v *Visitor) visitFile(n *ast.File) bool {
+	return !v.gen.Has(n)
 }

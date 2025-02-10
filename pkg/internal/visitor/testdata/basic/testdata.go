@@ -14,48 +14,51 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package a
+package basic
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
-	xerrors "golang.org/x/exp/errors"
+	. "golang.org/x/exp/errors"
 )
 
-type empty struct{}
+type myError struct{}
 
-type myErrors struct{}
-
-func (myErrors) Is(_, _ error) bool {
-	return false
+func (*myError) Error() string {
+	return "my error"
 }
 
-var myErrs = myErrors{}
+var (
+	ErrOne = &myError{}
+	ErrTwo = new(myError)
+)
 
-func IgnoreErrors() {
-	if errors.Is(ErrOne, nil) {
+func Exported() {
+	if errors.Is(nil, ErrOne) {
 		fmt.Println("nil")
 	}
 
-	var oneErr *typedError[int] // want "pointer to zero-sized type"
-	if errors.As(ErrOne, &oneErr) {
-		fmt.Println("ErrOne is typedError[int]")
-	}
-
-	func() {
-		errors := myErrs
-		if errors.Is(ErrOne, ErrTwo) {
-			fmt.Println("one is two")
-		}
-	}()
-
-	if xerrors.Is(func() error { // want "comparison of pointer to zero-size variable"
+	if errors.Is(func() error { // want "comparison of pointer to zero-size variable"
 		return ErrOne
 	}(), ErrTwo) {
 		fmt.Println("equal")
 	}
 
-	var err *typedError[int] // want "pointer to zero-sized type"
-	_ = errors.As(ErrOne, &err)
+	if ErrOne == ErrTwo { // want "comparison of pointers to zero-size variables"
+		fmt.Println("equal")
+	}
+
+	if ErrOne != ErrTwo { // want "comparison of pointers to zero-size variables"
+		fmt.Println("not equal")
+	}
+
+	if (Is)(ErrOne, ErrTwo) { // want "comparison of pointers to zero-size variables"
+		fmt.Println("equal")
+	}
+
+	empty := struct{}{}
+	json := (*json.Decoder)(nil)
+	_ = json.Decode(&empty)
 }

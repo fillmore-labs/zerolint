@@ -25,7 +25,7 @@ import (
 )
 
 // removeOp suggests a fix that removes the operator from the given expression.
-func (v Visitor) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
+func (v *Visitor) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	var buf bytes.Buffer
 	if err := format.Node(&buf, v.Pass.Fset, x); err != nil {
 		return nil
@@ -46,7 +46,7 @@ func (v Visitor) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 }
 
 // makePure adds a suggested fix from (*T)(nil) or new(T) to T{}.
-func (v Visitor) makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
+func (v *Visitor) makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	var buf bytes.Buffer
 	if err := format.Node(&buf, v.Pass.Fset, x); err != nil {
 		return nil
@@ -67,7 +67,7 @@ func (v Visitor) makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 }
 
 // report adds a diagnostic message to the analysis pass.
-func (v Visitor) report(rng analysis.Range, message string, fixes []analysis.SuggestedFix) {
+func (v *Visitor) report(rng analysis.Range, message string, fixes []analysis.SuggestedFix) {
 	v.Pass.Report(analysis.Diagnostic{
 		Pos:            rng.Pos(),
 		End:            rng.End(),

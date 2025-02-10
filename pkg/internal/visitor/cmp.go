@@ -22,34 +22,37 @@ import (
 	"go/types"
 )
 
-// comparisonInfo holds type information for comparison operands.
-type comparisonInfo struct {
-	elem        types.Type
-	zeroPointer bool
-	iface       bool
+// operandInfo holds type information for comparison operands.
+type operandInfo struct {
+	zeroSizedPointer bool
+	elem             types.Type
+}
+
+type comparison struct {
+	left, right operandInfo
 }
 
 // visitCmp checks comparisons like x == y, x != y and errors.Is(x, y).
-func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
-	var p [2]comparisonInfo
-	for i, z := range []ast.Expr{x, y} {
-		t := v.Pass.TypesInfo.Types[z]
-		if t.IsNil() {
-			return true
-		}
-		p[i] = v.getComparisonInfo(t.Type)
+func (v *Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
+	var p comparison
+	var ok bool
+	if p.left, ok = v.operandInfo(x); !ok {
+		return true
+	}
+	if p.right, ok = v.operandInfo(y); !ok {
+		return true
 	}
 
 	var message string
 	switch {
-	case p[0].zeroPointer && p[1].zeroPointer:
-		message = comparisonMessage(p[0].elem, p[1].elem)
+	case p.left.zeroSizedPointer && p.right.zeroSizedPointer:
+		message = p.comparisonMessage()
 
-	case p[0].zeroPointer:
-		message = comparisonIMessage(p[0].elem, p[1].elem, p[1].iface)
+	case p.left.zeroSizedPointer:
+		message = p.comparisonMessageLeft()
 
-	case p[1].zeroPointer:
-		message = comparisonIMessage(p[1].elem, p[0].elem, p[0].iface)
+	case p.right.zeroSizedPointer:
+		message = p.comparisonMessageRight()
 
 	default:
 		return true
@@ -61,41 +64,46 @@ func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 	return true
 }
 
-// getComparisonInfo extracts relevant type information for comparison.
-func (v Visitor) getComparisonInfo(t types.Type) comparisonInfo {
-	var info comparisonInfo
-
-	switch underlying := t.Underlying().(type) {
-	case *types.Pointer:
-		info.elem = underlying.Elem()
-		info.zeroPointer = v.zeroSizedType(info.elem)
-
-	case *types.Interface:
-		info.elem = t
-		info.iface = true
-
-	default:
-		info.elem = t
+// operandInfo extracts relevant type information for comparison.
+func (v *Visitor) operandInfo(x ast.Expr) (operandInfo, bool) {
+	tv := v.Pass.TypesInfo.Types[x]
+	if tv.IsNil() {
+		return operandInfo{}, false // comparisons to nil are not flagged
 	}
 
-	return info
+	switch t := tv.Type.Underlying().(type) {
+	case *types.Pointer:
+		if !v.zeroSizedType(t.Elem()) {
+			return operandInfo{}, false
+		}
+
+		return operandInfo{zeroSizedPointer: true, elem: t.Elem()}, true // comparisons with a zero-sized pointer
+
+	case *types.Interface:
+		return operandInfo{elem: tv.Type}, true // comparisons with an interface
+
+	default:
+		return operandInfo{}, false // other comparisons
+	}
 }
 
 // comparisonMessage determines the appropriate message for comparison of two pointers.
-func comparisonMessage(xType, yType types.Type) string {
-	if types.Identical(xType, yType) {
-		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", xType)
+func (c comparison) comparisonMessage() string {
+	if c.left.elem == c.right.elem {
+		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", c.left.elem)
 	}
 
-	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q", xType, yType)
+	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q", c.left.elem, c.right.elem)
 }
 
-// comparisonIMessage determines the appropriate message for pointer comparison.
-func comparisonIMessage(zType, withType types.Type, isInterface bool) string {
-	var isIf string
-	if isInterface {
-		isIf = "interface "
-	}
+// comparisonMessageLeft determines the appropriate message for pointer-to-interface comparison.
+func (c comparison) comparisonMessageLeft() string {
+	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface of type %q",
+		c.left.elem, c.right.elem)
+}
 
-	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with %s%q", zType, isIf, withType)
+// comparisonMessageRight determines the appropriate message for interface to pointer comparison.
+func (c comparison) comparisonMessageRight() string {
+	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface of type %q",
+		c.right.elem, c.left.elem)
 }

@@ -23,20 +23,20 @@ import (
 )
 
 // visitUnary checks expressions in form &x.
-func (v Visitor) visitUnary(x *ast.UnaryExpr) bool {
-	if x.Op != token.AND {
+func (v *Visitor) visitUnary(n *ast.UnaryExpr) bool {
+	if n.Op != token.AND {
 		return true
 	}
 
 	// &...
-	t := v.Pass.TypesInfo.TypeOf(x.X)
+	t := v.Pass.TypesInfo.TypeOf(n.X)
 	if !v.zeroSizedType(t) {
 		return true
 	}
 
 	message := fmt.Sprintf("address of zero-size variable of type %q", t)
-	fixes := v.removeOp(x, x.X)
-	v.report(x, message, fixes)
+	fixes := v.removeOp(n, n.X)
+	v.report(n, message, fixes)
 
 	return fixes == nil
 }

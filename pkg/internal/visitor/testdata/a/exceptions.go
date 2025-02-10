@@ -14,17 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package a
 
-import (
-	"io/fs"
-	"os"
-)
+func Exceptions() {
+	m := make([]int, 0)
+	clear(m)
 
-type osFS struct{}
+	_ = new(*int)
 
-var _ fs.FS = osFS{}
-
-func (osFS) Open(name string) (fs.File, error) {
-	return os.Open(name) //nolint:gosec
+	_ = 0 == 0
+	_ = error(nil) == error(nil)
 }

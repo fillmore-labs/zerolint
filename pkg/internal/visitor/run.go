@@ -17,55 +17,128 @@
 package visitor
 
 import (
+	"errors"
 	"go/ast"
+	"go/token"
+	"iter"
 	"log"
-	"slices"
+	"strings"
 
 	"fillmore-labs.com/zerolint/pkg/internal/set"
+	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+// Options defines configurable parameters for the linter.
+type Options struct {
+	Logger    *log.Logger
+	Excludes  set.Set[string]
+	ZeroTrace bool
+	Full      bool
+	Generated bool
+}
+
+// Visitor is an AST visitor for analyzing usage of pointers to zero-size variables.
+type Visitor struct {
+	Pass            *analysis.Pass
+	excludes        set.Set[string]
+	detected        set.Set[string]
+	gen             set.Set[*ast.File]
+	ignored         set.Set[token.Pos]
+	full, generated bool
+}
+
+// New returns a [Visitor] configured with [Options].
+func New(opt Options) *Visitor {
+	return &Visitor{
+		excludes:  opt.Excludes,
+		full:      opt.Full,
+		generated: opt.Generated,
+	}
+}
+
+// HasDetected tells whether zero-sized types have been detected.
+func (v *Visitor) HasDetected() bool {
+	return len(v.detected) > 0
+}
+
+// AllDetected returns an iterator over the detected zero-sized types in alphabetical order.
+func (v *Visitor) AllDetected() iter.Seq[string] {
+	return set.AllSorted(v.detected)
+}
+
+// ErrNoInspectorResult is returned when the ast inspetor is missing.
+var ErrNoInspectorResult = errors.New("zerolint: inspector result missing")
+
+const zerolintExclude = "zerolint:exclude"
+
 // Run runs the analysis.
-func Run(logger *log.Logger, visitor Visitor, zeroTrace, basic, generated bool) {
-	in, ok := visitor.Pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+func (v *Visitor) Run(pass *analysis.Pass) (any, error) {
+	v.Pass = pass
+	in, ok := v.Pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	if !ok {
-		logger.Fatal("inspector result missing")
+		return nil, ErrNoInspectorResult
 	}
 
-	visitor.Excludes.Insert("runtime.Func")
-	visitor.Detected = set.New[string]()
+	v.calcIgnored(in)
 
-	types, f := visitFunc(visitor, basic, generated)
+	if v.excludes == nil {
+		v.excludes = set.New[string]()
+	}
+	v.excludes.Insert("runtime.Func")
+	v.detected = set.New[string]()
+
+	types, f := v.selectVisitFunc()
 	in.Nodes(types, f)
 
-	if zeroTrace && len(visitor.Detected) > 0 {
-		logger.Printf("found zero-sized types in %q:\n", visitor.Pass.Pkg.Path())
-		names := visitor.Detected.Elements()
-		slices.Sort(names)
-		for _, name := range names {
-			logger.Printf("- %s\n", name)
+	return any(nil), nil
+}
+
+func (v *Visitor) calcIgnored(in *inspector.Inspector) {
+	v.gen = set.New[*ast.File]()
+	v.ignored = set.New[token.Pos]()
+	var isGen bool
+	for n := range in.PreorderSeq((*ast.File)(nil), (*ast.TypeSpec)(nil)) {
+		switch n := n.(type) {
+		case *ast.File:
+			isGen = ast.IsGenerated(n)
+			if isGen {
+				v.gen.Insert(n)
+			}
+
+		case *ast.TypeSpec:
+			if isGen {
+				v.ignored.Insert(n.Name.NamePos)
+
+				continue
+			}
+
+			if group := n.Comment; group != nil {
+				for _, c := range group.List {
+					if strings.Contains(c.Text, zerolintExclude) {
+						v.ignored.Insert(n.Name.NamePos)
+
+						break
+					}
+				}
+			}
 		}
 	}
 }
 
 // visitFunc determines parameters and function to call for inspector.Nodes.
-func visitFunc(visitor Visitor, basic, generated bool) ([]ast.Node, func(ast.Node, bool) bool) {
+func (v *Visitor) selectVisitFunc() ([]ast.Node, func(n ast.Node, push bool) (proceed bool)) {
 	types := make([]ast.Node, 0, 5) //nolint:mnd
-	var f func(ast.Node, bool) bool
 
 	types = append(types, (*ast.BinaryExpr)(nil), (*ast.CallExpr)(nil))
-	if !generated {
+	if !v.generated {
 		types = append(types, (*ast.File)(nil))
 	}
 
-	if basic {
-		types = append(types, (*ast.FuncDecl)(nil))
-		f = visitor.visitBasic
-	} else {
+	if v.full {
 		types = append(types, (*ast.StarExpr)(nil), (*ast.UnaryExpr)(nil))
-		f = visitor.visit
 	}
 
-	return types, f
+	return types, v.visit
 }

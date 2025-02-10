@@ -16,12 +16,14 @@
 
 package a
 
-import "encoding/json"
+type m1 struct{}
 
-func IgnoreJson() {
-	empty := struct{}{}
+func (m *m1) f() *m1 { return m } // want "pointer to zero-sized type" "pointer to zero-sized type"
 
-	_ = json.Unmarshal(nil, &empty)
-	_ = (*json.Decoder)(nil).Decode(&empty)
-	_ = json.NewDecoder(nil).Decode(&empty)
-}
+var _ = (*m1).f(&m1{}) // want "method expression receiver is pointer to zero-size variable" "pointer to zero-sized type" "address of zero-size variable"
+
+type m2 struct{} //zerolint:exclude
+
+func (m *m2) f() *m2 { return m }
+
+var _ = (*m2).f(nil) // Would be broken by '-fix'.
