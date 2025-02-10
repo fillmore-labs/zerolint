@@ -5,7 +5,7 @@ linters:
   enable-all: true
   disable:
     # deprecated
-    - exportloopref
+    - tenv
     # disabled
     - depguard
     - dupl

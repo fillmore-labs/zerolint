@@ -26,30 +26,33 @@ import (
 type comparisonInfo struct {
 	elem        types.Type
 	zeroPointer bool
-	iface       bool
+}
+
+type comparison struct {
+	left, right comparisonInfo
 }
 
 // visitCmp checks comparisons like x == y, x != y and errors.Is(x, y).
-func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
-	var p [2]comparisonInfo
-	for i, z := range []ast.Expr{x, y} {
-		t := v.Pass.TypesInfo.Types[z]
-		if t.IsNil() {
-			return true
-		}
-		p[i] = v.getComparisonInfo(t.Type)
+func (v *visitorInternal) visitCmp(n ast.Node, x, y ast.Expr) bool {
+	var p comparison
+	var isNil bool
+	if p.left, isNil = v.getComparisonInfo(x); isNil {
+		return true
+	}
+	if p.right, isNil = v.getComparisonInfo(y); isNil {
+		return true
 	}
 
 	var message string
 	switch {
-	case p[0].zeroPointer && p[1].zeroPointer:
-		message = comparisonMessage(p[0].elem, p[1].elem)
+	case p.left.zeroPointer && p.right.zeroPointer:
+		message = p.comparisonMessage()
 
-	case p[0].zeroPointer:
-		message = comparisonIMessage(p[0].elem, p[1].elem, p[1].iface)
+	case p.left.zeroPointer:
+		message = p.comparisonMessageLeft()
 
-	case p[1].zeroPointer:
-		message = comparisonIMessage(p[1].elem, p[0].elem, p[0].iface)
+	case p.right.zeroPointer:
+		message = p.comparisonMessageRight()
 
 	default:
 		return true
@@ -62,40 +65,51 @@ func (v Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 }
 
 // getComparisonInfo extracts relevant type information for comparison.
-func (v Visitor) getComparisonInfo(t types.Type) comparisonInfo {
-	var info comparisonInfo
-
-	switch underlying := t.Underlying().(type) {
-	case *types.Pointer:
-		info.elem = underlying.Elem()
-		info.zeroPointer = v.zeroSizedType(info.elem)
-
-	case *types.Interface:
-		info.elem = t
-		info.iface = true
-
-	default:
-		info.elem = t
+func (v *visitorInternal) getComparisonInfo(x ast.Expr) (info comparisonInfo, isNil bool) {
+	tv := v.Pass.TypesInfo.Types[x]
+	if tv.IsNil() { // nil
+		return info, true
 	}
 
-	return info
+	t := tv.Type
+	underlying, ok := t.Underlying().(*types.Pointer)
+	if !ok { // Not a pointer.
+		info.elem = t
+
+		return info, false
+	}
+
+	elem := underlying.Elem()
+	if !v.zeroSizedType(elem) { // Not a pointer to a zero-sized variable.
+		info.elem = t
+
+		return info, false
+	}
+
+	// Pointer to a zero-sized variable.
+	info.zeroPointer = true
+	info.elem = elem
+
+	return info, false
 }
 
 // comparisonMessage determines the appropriate message for comparison of two pointers.
-func comparisonMessage(xType, yType types.Type) string {
-	if types.Identical(xType, yType) {
-		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", xType)
+func (c comparison) comparisonMessage() string {
+	if c.left.elem == c.right.elem {
+		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", c.left.elem)
 	}
 
-	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q", xType, yType)
+	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q", c.left.elem, c.right.elem)
 }
 
-// comparisonIMessage determines the appropriate message for pointer comparison.
-func comparisonIMessage(zType, withType types.Type, isInterface bool) string {
-	var isIf string
-	if isInterface {
-		isIf = "interface "
-	}
+const comparisonMessage = "comparison of pointer to zero-size variable of type %q with variable of type %q"
 
-	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with %s%q", zType, isIf, withType)
+// comparisonMessageLeft determines the appropriate message for pointer comparison.
+func (c comparison) comparisonMessageLeft() string {
+	return fmt.Sprintf(comparisonMessage, c.left.elem, c.right.elem)
+}
+
+// comparisonMessageRight determines the appropriate message for pointer comparison.
+func (c comparison) comparisonMessageRight() string {
+	return fmt.Sprintf(comparisonMessage, c.right.elem, c.left.elem)
 }

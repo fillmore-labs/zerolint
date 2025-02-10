@@ -17,6 +17,7 @@
 package set_test
 
 import (
+	"reflect"
 	"testing"
 
 	. "fillmore-labs.com/zerolint/pkg/internal/set"
@@ -63,5 +64,29 @@ func TestElements(t *testing.T) {
 	// then
 	if len(l) != 1 || l[0] != 1 {
 		t.Errorf("Expected l to be [1], got %v", l)
+	}
+}
+
+func TestSorted(t *testing.T) {
+	t.Parallel()
+
+	type args struct {
+		s Set[int]
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{"2, 1", args{New(2, 1)}, []int{1, 2}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := Sorted(tt.args.s); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Sorted(%q) = %v, want %v", tt.args.s, got, tt.want)
+			}
+		})
 	}
 }

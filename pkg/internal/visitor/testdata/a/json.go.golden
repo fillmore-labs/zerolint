@@ -14,13 +14,30 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package visitor
+package a
 
-import (
-	"go/ast"
-)
+import "encoding/json"
 
-// visitFile checks for generated files.
-func (v *visitorInternal) visitFile(n *ast.File) bool {
-	return !v.gen.Has(n)
+type myDecoder1 struct {
+	json.Decoder
+}
+
+type myDecoder2 struct {
+	*json.Decoder
+}
+
+type myDecoder3 = *json.Decoder
+
+func IgnoreJson() {
+	empty := struct{}{}
+
+	_ = json.Unmarshal(nil, &empty)
+	_ = (*json.Decoder)(nil).Decode(&empty)
+	_ = json.NewDecoder(nil).Decode(&empty)
+	_ = (*myDecoder1)(nil).Decode(&empty)
+	_ = (&myDecoder1{}).Decode(&empty)
+	_ = myDecoder2{}.Decode(&empty)
+	_ = (myDecoder3)(nil).Decode(&empty)
+
+	_, _ = json.Marshal(empty) // want "address of zero-size variable"
 }

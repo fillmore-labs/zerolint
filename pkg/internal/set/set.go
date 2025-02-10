@@ -16,6 +16,12 @@
 
 package set
 
+import (
+	"cmp"
+	"iter"
+	"slices"
+)
+
 // Set is a collection of unique elements of type T.
 // It is implemented using a map with values of an empty struct.
 type Set[T comparable] map[T]struct{}
@@ -53,4 +59,15 @@ func (s Set[T]) Elements() []T {
 	}
 
 	return sl
+}
+
+func Sorted[T cmp.Ordered](s Set[T]) []T {
+	ret := s.Elements()
+	slices.Sort(ret)
+
+	return ret
+}
+
+func AllSorted[T cmp.Ordered](s Set[T]) iter.Seq[T] {
+	return slices.Values(Sorted(s))
 }
