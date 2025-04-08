@@ -71,7 +71,7 @@ func TestRun(t *testing.T) {
 			analysistest.RunWithSuggestedFixes(t, dir, a, tt.args.pattern)
 
 			if !v.HasDetected() {
-				t.Error("Expected detection of zero sized types")
+				t.Error("Expected detection of zero-sized types")
 			}
 
 			zerotypes := slices.Collect(v.AllDetected())

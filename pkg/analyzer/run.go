@@ -88,7 +88,7 @@ func (o excludesOption) apply(opts *options) {
 	}
 }
 
-// WithZeroTrace is an [Option] to configure tracing of zero sized types.
+// WithZeroTrace is an [Option] to configure tracing of zero-sized types.
 func WithZeroTrace(zeroTrace bool) Option { //nolint:ireturn
 	return zeroTraceOption{zeroTrace: zeroTrace}
 }
@@ -112,6 +112,19 @@ type fullOption struct {
 
 func (o fullOption) apply(opts *options) {
 	opts.Full = o.full
+}
+
+// WithMethod is an [Option] to configure full linting.
+func WithMethod(method bool) Option { //nolint:ireturn
+	return methodOption{method: method}
+}
+
+type methodOption struct {
+	method bool
+}
+
+func (o methodOption) apply(opts *options) {
+	opts.Method = o.method
 }
 
 // WithGenerated is an [Option] to configure linting of generated files.

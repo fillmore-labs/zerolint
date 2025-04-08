@@ -18,9 +18,9 @@ package a
 
 type m1 struct{}
 
-func (m *m1) f() *m1 { return m } // want "pointer to zero-sized type" "pointer to zero-sized type"
+func (m *m1) f() *m1 { return m } // want "method f has pointer receiver to zero-sized type" "pointer to zero-sized type"
 
-var _ = (*m1).f(&m1{}) // want "method expression receiver is pointer to zero-size variable" "pointer to zero-sized type" "address of zero-size variable"
+var _ = (*m1).f(&m1{}) // want "method expression receiver is pointer to zero-size variable" "address of zero-size variable"
 
 type m2 struct{} //zerolint:exclude
 

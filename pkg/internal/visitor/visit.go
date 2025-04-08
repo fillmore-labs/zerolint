@@ -21,7 +21,7 @@ import (
 )
 
 // visit is the main functions called by inspector.Nodes for analysis.
-func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) {
+func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) { //nolint:cyclop
 	if !push {
 		return true
 	}
@@ -41,6 +41,15 @@ func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) {
 
 	case *ast.File:
 		return v.visitFile(n)
+
+	case *ast.FuncDecl:
+		return v.visitFuncDecl(n)
+
+	case *ast.TypeAssertExpr:
+		return v.visitTypeAssert(n)
+
+	case *ast.StructType:
+		return v.visitStructType(n)
 
 	default:
 		return true

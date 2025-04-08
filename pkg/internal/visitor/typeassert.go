@@ -14,24 +14,28 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package a
+package visitor
 
-type typedError[T any] struct {
-	_ [0]T
-}
-
-type embeddedPointer struct {
-	empt       // want "embedded pointer to zero-sized type"
-	t     empt // want "field t points to zero-sized type"
-	u, v  empt // want "fields u, v point to zero-sized type"
-}
-
-func (typedError[_]) Error() string { // want "error interface implemented on pointer to zero-sized type"
-	return "an error"
-}
-
-var (
-	_      error = typedError[any]{}         // want "address of zero-size variable"
-	ErrOne       = (typedError[int]{})       // want "address of zero-size variable"
-	ErrTwo       = typedError[float64]{} // want "new called on zero-sized type"
+import (
+	"fmt"
+	"go/ast"
 )
+
+// visitTypeAssert analyzes type assertions x.(T).
+func (v *Visitor) visitTypeAssert(n *ast.TypeAssertExpr) bool {
+	x := n.Type
+	if x == nil { // type switch
+		return true
+	}
+	t := v.Pass.TypesInfo.TypeOf(x)
+	elem, ok := v.zeroSizedTypePointer(t)
+	if !ok {
+		return true
+	}
+
+	message := fmt.Sprintf("type assert to pointer to zero-size variable of type %q (ZL12)", elem)
+	fixes := v.removeStar(x)
+	v.report(n, message, fixes)
+
+	return true
+}

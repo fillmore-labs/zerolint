@@ -20,7 +20,13 @@ type typedError[T any] struct {
 	_ [0]T
 }
 
-func (*typedError[_]) Error() string { // want "pointer to zero-sized type"
+type embeddedPointer struct {
+	*empt       // want "embedded pointer to zero-sized type"
+	t     *empt // want "field t points to zero-sized type"
+	u, v  *empt // want "fields u, v point to zero-sized type"
+}
+
+func (*typedError[_]) Error() string { // want "error interface implemented on pointer to zero-sized type"
 	return "an error"
 }
 

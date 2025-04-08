@@ -16,22 +16,15 @@
 
 package a
 
-type typedError[T any] struct {
-	_ [0]T
-}
-
-type embeddedPointer struct {
-	empt       // want "embedded pointer to zero-sized type"
-	t     empt // want "field t points to zero-sized type"
-	u, v  empt // want "fields u, v point to zero-sized type"
-}
-
-func (typedError[_]) Error() string { // want "error interface implemented on pointer to zero-sized type"
-	return "an error"
-}
-
-var (
-	_      error = typedError[any]{}         // want "address of zero-size variable"
-	ErrOne       = (typedError[int]{})       // want "address of zero-size variable"
-	ErrTwo       = typedError[float64]{} // want "new called on zero-sized type"
+type (
+	empt  = struct{}
+	pempt = *empt // want "pointer to zero-sized type"
 )
+
+func Asssert() {
+	var a any = &empt{} // want "address of zero-size variable"
+	_ = a.(pempt)       // want "type assert to pointer to zero-size variable"
+
+	var s any = ""
+	_ = s.(string)
+}

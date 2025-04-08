@@ -41,7 +41,7 @@ func Exported() {
 		fmt.Println("not equal")
 	}
 
-	_, _ = any(xp).((*[0]string)) // want "pointer to zero-sized type"
+	_, _ = any(xp).((*[0]string)) // want "type assert to pointer to zero-size variable"
 
 	switch any(xp).(type) {
 	case (*[0]string): // want "pointer to zero-sized type"

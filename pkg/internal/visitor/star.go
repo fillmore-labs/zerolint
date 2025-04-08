@@ -22,8 +22,12 @@ import (
 	"go/types"
 )
 
-// visitStar checks expressions in form *x.
+// visitStar analyzes star expressions (*x).
 func (v *Visitor) visitStar(n *ast.StarExpr) bool {
+	if v.seen.Has(n.Pos()) {
+		return true
+	}
+
 	t := v.Pass.TypesInfo.TypeOf(n.X)
 	message, ok := v.zeroSizedStarExpr(t)
 	if !ok {
@@ -36,6 +40,7 @@ func (v *Visitor) visitStar(n *ast.StarExpr) bool {
 	return fixes == nil
 }
 
+// zeroSizedStarExpr analyzes the type in a star expression (*x) to determine if it involves a zero-sized type.
 func (v *Visitor) zeroSizedStarExpr(t types.Type) (message string, ok bool) {
 	if t == nil {
 		return "", false
@@ -48,7 +53,7 @@ func (v *Visitor) zeroSizedStarExpr(t types.Type) (message string, ok bool) {
 
 		// *... where the type of ... is a pointer to a zero-size variable.
 		// p := &struct{}{}; _ = *p
-		return fmt.Sprintf("pointer to zero-size variable of type %q", p.Elem()), true
+		return fmt.Sprintf("pointer to zero-size variable of type %q (ZL08)", p.Elem()), true
 	}
 
 	if !v.zeroSizedType(t) {
@@ -57,5 +62,5 @@ func (v *Visitor) zeroSizedStarExpr(t types.Type) (message string, ok bool) {
 
 	// *... where ... is a zero-sized type.
 	// type t struct{}; var _ *t
-	return fmt.Sprintf("pointer to zero-sized type %q", t), true
+	return fmt.Sprintf("pointer to zero-sized type %q (ZL07)", t), true
 }

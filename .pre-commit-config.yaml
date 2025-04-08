@@ -1,0 +1,6 @@
+---
+repos:
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.16.0
+    hooks:
+      - id: yamlfmt

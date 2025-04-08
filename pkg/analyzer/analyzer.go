@@ -51,6 +51,9 @@ var (
 	// Full enables full analysis, which should be handles manually.
 	Full bool
 
+	// Method enables analysis of methods implemented with pointer to zero-sized receiver type.
+	Method bool
+
 	// Generated enables checking generated files.
 	Generated bool
 )
@@ -59,6 +62,7 @@ func init() { //nolint:gochecknoinits
 	Analyzer.Flags.StringVar(&Excludes, "excluded", "", "read excluded types from this file")
 	Analyzer.Flags.BoolVar(&ZeroTrace, "zerotrace", false, "trace found zero-sized types")
 	Analyzer.Flags.BoolVar(&Full, "full", false, "full analysis")
+	Analyzer.Flags.BoolVar(&Method, "method", false, "list methods whose receivers are pointers to zero-sized types")
 	Analyzer.Flags.BoolVar(&Generated, "generated", false, "check generated files")
 }
 
@@ -74,6 +78,7 @@ func run(pass *analysis.Pass) (any, error) {
 		WithExcludes(ex),
 		WithZeroTrace(ZeroTrace),
 		WithFull(Full),
+		WithMethod(Method),
 		WithGenerated(Generated),
 	)(pass)
 }

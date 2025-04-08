@@ -32,7 +32,8 @@ type comparison struct {
 	left, right operandInfo
 }
 
-// visitCmp checks comparisons like x == y, x != y and errors.Is(x, y).
+// visitCmp analyzes comparison expressions (x == y, x != y, errors.Is(x, y)) for comparisons
+// involving pointers to zero-sized types.
 func (v *Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 	var p comparison
 	var ok bool
@@ -64,7 +65,8 @@ func (v *Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 	return true
 }
 
-// operandInfo extracts relevant type information for comparison.
+// operandInfo extracts type information about comparison operands,
+// identifying whether they are pointers to zero-sized types or interfaces.
 func (v *Visitor) operandInfo(x ast.Expr) (operandInfo, bool) {
 	tv := v.Pass.TypesInfo.Types[x]
 	if tv.IsNil() {
@@ -77,7 +79,7 @@ func (v *Visitor) operandInfo(x ast.Expr) (operandInfo, bool) {
 			return operandInfo{}, false
 		}
 
-		return operandInfo{zeroSizedPointer: true, elem: t.Elem()}, true // comparisons with a zero-sized pointer
+		return operandInfo{zeroSizedPointer: true, elem: t.Elem()}, true // comparisons with a pointer to zero-size vriable
 
 	case *types.Interface:
 		return operandInfo{elem: tv.Type}, true // comparisons with an interface
@@ -87,23 +89,25 @@ func (v *Visitor) operandInfo(x ast.Expr) (operandInfo, bool) {
 	}
 }
 
-// comparisonMessage determines the appropriate message for comparison of two pointers.
+// comparisonMessage generates an appropriate diagnostic message for comparing
+// two pointers to zero-sized types.
 func (c comparison) comparisonMessage() string {
-	if c.left.elem == c.right.elem {
-		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", c.left.elem)
+	if types.Identical(c.left.elem, c.right.elem) { // types.Identical ignores aliases
+		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q (ZL01)", c.left.elem)
 	}
 
-	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q", c.left.elem, c.right.elem)
-}
-
-// comparisonMessageLeft determines the appropriate message for pointer-to-interface comparison.
-func (c comparison) comparisonMessageLeft() string {
-	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface of type %q",
+	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q (ZL01)",
 		c.left.elem, c.right.elem)
 }
 
-// comparisonMessageRight determines the appropriate message for interface to pointer comparison.
+// comparisonMessageLeft generates a diagnostic message for pointer-to-interface comparison.
+func (c comparison) comparisonMessageLeft() string {
+	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface of type %q (ZL02)",
+		c.left.elem, c.right.elem)
+}
+
+// comparisonMessageLeft generates a diagnostic message for interface-to-pointer comparison.
 func (c comparison) comparisonMessageRight() string {
-	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface of type %q",
+	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface of type %q (ZL02)",
 		c.right.elem, c.left.elem)
 }

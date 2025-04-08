@@ -16,8 +16,12 @@
 
 package a
 
+import "runtime"
+
 type candidate[T any] struct{ _ T } //zerolint:exclude
 
 func Excluded() {
 	_ = &candidate[[0]string]{}
+
+	var _ runtime.Func
 }

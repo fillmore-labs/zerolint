@@ -26,7 +26,7 @@ import (
 
 type myError struct{}
 
-func (*myError) Error() string { // want "error interface implemented on pointer to zero-sized type"
+func (myError) Error() string { // want "error interface implemented on pointer to zero-sized type"
 	return "my error"
 }
 
@@ -35,7 +35,7 @@ func (*myError) String() string {
 }
 
 type embeddedError struct {
-	*myError // want "embedded pointer to zero-sized type"
+	myError // want "embedded pointer to zero-sized type"
 	_        *myError
 }
 

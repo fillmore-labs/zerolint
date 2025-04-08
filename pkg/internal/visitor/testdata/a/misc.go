@@ -34,7 +34,7 @@ type B = A
 
 var _ = &B{} == &A{} // want "comparison of pointers to zero-size variables" "address of zero-size variable" "address of zero-size variable"
 
-func (*B) Combine(_ *B) *B { // want "pointer to zero-sized type" "pointer to zero-sized type" "pointer to zero-sized type"
+func (*B) Combine(_ *B) *B { // want "method Combine has pointer receiver to zero-sized type" "pointer to zero-sized type" "pointer to zero-sized type"
 	return &B{} // want "address of zero-size variable"
 }
 
@@ -44,7 +44,7 @@ type greeter [5][5]struct{}
 
 type greeterAlias = *greeter // want "pointer to zero-sized type"
 
-func (g greeterAlias) String() string {
+func (g greeterAlias) String() string { // want "method String has pointer receiver to zero-sized type"
 	return "hello, world"
 }
 
@@ -58,7 +58,7 @@ var _ fmt.Stringer = new(greeter) // want "new called on zero-sized type"
 
 type greeter2[T any] [5][5][0]T
 
-func (g *greeter2[T]) String() string { // want "pointer to zero-sized type"
+func (g *greeter2[T]) String() string { // want "method String has pointer receiver to zero-sized type"
 	return "hello, world"
 }
 

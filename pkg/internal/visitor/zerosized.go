@@ -40,9 +40,9 @@ func (v *Visitor) zeroSizedType(t types.Type) bool {
 		return false
 	}
 
-	if n, ok := t.(*types.Named); ok {
+	if t, ok := t.(*types.Named); ok {
 		// Check if declared in a generated file or excluded by comment
-		if tn := n.Obj(); v.ignored.Has(tn.Pos()) {
+		if tn := t.Obj(); v.ignored.Has(tn.Pos()) {
 			return false
 		}
 	}

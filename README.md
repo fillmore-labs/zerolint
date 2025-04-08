@@ -21,6 +21,7 @@ Flags:
 
 - **-c** int display offending line with this many lines of context (default -1)
 - **-full** full analysis
+- **-method** also check for methods whose receivers are pointers to zero-sized types
 - **-excluded** `<filename>` read excluded types from this file
 - **-zerotrace** trace found zero-sized types
 - **-fix** apply all suggested fixes

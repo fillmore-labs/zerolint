@@ -24,7 +24,18 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// removeOp suggests a fix that removes the operator from the given expression.
+// removeStar suggests a fix that removes the star ('*') operator from an expression, if possible.
+func (v *Visitor) removeStar(x ast.Expr) []analysis.SuggestedFix {
+	if s, ok := ast.Unparen(x).(*ast.StarExpr); ok {
+		v.seen.Insert(s.Pos())
+
+		return v.removeOp(s, s.X)
+	}
+
+	return nil
+}
+
+// removeOp suggests a fix that removes a unary operator ('*' or '&') from an expression.
 func (v *Visitor) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	var buf bytes.Buffer
 	if err := format.Node(&buf, v.Pass.Fset, x); err != nil {
@@ -45,7 +56,7 @@ func (v *Visitor) removeOp(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	}
 }
 
-// makePure adds a suggested fix from (*T)(nil) or new(T) to T{}.
+// makePure creates a suggested fix that replaces (*T)(nil) or new(T) with T{} .
 func (v *Visitor) makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	var buf bytes.Buffer
 	if err := format.Node(&buf, v.Pass.Fset, x); err != nil {
@@ -66,12 +77,12 @@ func (v *Visitor) makePure(n ast.Node, x ast.Expr) []analysis.SuggestedFix {
 	}
 }
 
-// report adds a diagnostic message to the analysis pass.
+// report adds a diagnostic message to the analysis pass results.
 func (v *Visitor) report(rng analysis.Range, message string, fixes []analysis.SuggestedFix) {
 	v.Pass.Report(analysis.Diagnostic{
 		Pos:            rng.Pos(),
 		End:            rng.End(),
-		Category:       "zero-size",
+		Category:       "zero-sized",
 		Message:        message,
 		URL:            "https://pkg.go.dev/fillmore-labs.com/zerolint",
 		SuggestedFixes: fixes,

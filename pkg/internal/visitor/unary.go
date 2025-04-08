@@ -34,7 +34,7 @@ func (v *Visitor) visitUnary(n *ast.UnaryExpr) bool {
 		return true
 	}
 
-	message := fmt.Sprintf("address of zero-size variable of type %q", t)
+	message := fmt.Sprintf("address of zero-size variable of type %q (ZL09)", t)
 	fixes := v.removeOp(n, n.X)
 	v.report(n, message, fixes)
 

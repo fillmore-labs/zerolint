@@ -23,7 +23,7 @@ import (
 
 type myError struct{}
 
-func (*myError) Error() string {
+func (*myError) Error() string { // want "error interface implemented on pointer to zero-sized type"
 	return "my error"
 }
 
