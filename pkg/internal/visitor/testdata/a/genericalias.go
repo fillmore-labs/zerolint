@@ -28,7 +28,7 @@ type Ety = struct{}
 
 func Check(x any) {
 	switch x.(type) {
-	case *GB[Ety]: // want "pointer to zero-sized type"
+	case *GB[Ety]: // want "\\(zl:art\\)"
 		fmt.Println("*GB[Ety]")
 	}
 

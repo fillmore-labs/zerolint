@@ -14,47 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// This is the main program for the zerolint linter.
 package main
 
 import (
-	"flag"
-	"fmt"
-	"os"
-	"runtime/debug"
-
-	"fillmore-labs.com/zerolint/pkg/analyzer"
+	"fillmore-labs.com/zerolint/pkg/zerolint"
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
 func main() {
-	a := analyzer.Analyzer
-	addVersionFlag(&a.Flags)
-	singlechecker.Main(analyzer.Analyzer)
-}
+	a := zerolint.New(zerolint.WithFlags(true))
 
-func addVersionFlag(s *flag.FlagSet) {
-	if s.Lookup("V") == nil {
-		s.Var(versionFlag{}, "V", "print version and exit")
-	}
-}
-
-type versionFlag struct{}
-
-func (versionFlag) IsBoolFlag() bool { return true }
-func (versionFlag) Get() any         { return nil }
-func (versionFlag) String() string   { return "" }
-func (versionFlag) Set(_ string) error {
-	const progname = "zerolint"
-
-	if bi, ok := debug.ReadBuildInfo(); ok {
-		fmt.Printf("%s version %s build with %s\n",
-			progname, bi.Main.Version, bi.GoVersion)
-	} else {
-		fmt.Printf("%s version (unknown)\n", progname)
-	}
-
-	os.Exit(0)
-
-	return nil
+	singlechecker.Main(a)
 }

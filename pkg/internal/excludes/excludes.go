@@ -37,14 +37,17 @@ func ReadExcludes(fsys fs.FS, name string) ([]string, error) {
 	defer file.Close()
 
 	var excludes []string //nolint:prealloc
+
 	scanner := bufio.NewScanner(file)
 	for line := range AllText(scanner) {
 		line = strings.TrimSpace(line)
 		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
+
 		excludes = append(excludes, line)
 	}
+
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error scanning %q: %w", name, err)
 	}

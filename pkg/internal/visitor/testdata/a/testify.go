@@ -14,17 +14,27 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package a
 
 import (
-	"io/fs"
-	"os"
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type osFS struct{}
+func TestTestify(t *testing.T) {
+	assert.Error(t, ErrOne)
 
-var _ fs.FS = osFS{}
+	assert.EqualError(t, ErrOne, "an error")
 
-func (osFS) Open(name string) (fs.File, error) {
-	return os.Open(name) //nolint:gosec
+	require.ErrorIs(t, ErrOne, nil)
+
+	var oneErr *typedError[int] // want "\\(zl:var\\)"
+	if assert.ErrorAs(t, ErrOne, &oneErr) {
+		fmt.Println("ErrOne is typedError[int]")
+	}
+
+	assert.Equal(t, ErrOne, ErrTwo)
 }

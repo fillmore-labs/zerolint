@@ -23,5 +23,5 @@ func TypeParam() {
 
 	_ = &embedded[int]{} == &embedded[int]{}
 
-	_ = embedded[empty]{} // want "address of zero-size variable"
+	_ = embedded[empty]{} // want "\\(zl:add\\)"
 }

@@ -14,36 +14,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer_test
+package a
 
-import (
-	"testing"
+type baseError [0]int
 
-	"fillmore-labs.com/zerolint/pkg/analyzer"
-	"golang.org/x/tools/go/analysis/analysistest"
-)
+func (baseError) Error() string { return "" }
 
-func TestAnalyzer(t *testing.T) { //nolint:tparallel
-	t.Parallel()
+func (baseError) String() string { return "" }
 
-	dir := analysistest.TestData()
+type anError = baseError
 
-	type args struct {
-		excludes string
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{"basic", args{dir + "/excluded.txt"}},
-	}
+type embError struct{ anError }
 
-	for _, tt := range tests { //nolint:paralleltest
-		a := analyzer.Analyzer
-		analyzer.Excludes = tt.args.excludes
+type eError embError
 
-		t.Run(tt.name, func(t *testing.T) {
-			analysistest.Run(t, dir, a, "go.test/basic")
-		})
-	}
-}
+type xError = eError
+
+var _ error = (*xError)(nil) // want "\\(zl:cst\\+\\)"

@@ -17,27 +17,33 @@
 package basic
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+
+	. "golang.org/x/exp/errors"
 )
 
 type myError struct{}
 
-func (*myError) Error() string {
+type myErrorPtr = myError // want "\\(zl:dcl\\+\\)"
+
+func (myErrorPtr) Error() string { // want "\\(zl:err\\+\\)"
 	return "my error"
 }
 
-type noError struct{}
+func (myError) GoString() string {
+	return "go string"
+}
 
-func (*noError) Error() string {
-	return "no error"
+type embeddedError struct {
+	myError // want "\\(zl:emb\\+\\)"
+	_        *myError
 }
 
 var (
-	ErrOne   = &myError{}
-	ErrTwo   = new(myError)
-	ErrThree = &noError{}
-	ErrFour  = new(noError)
+	ErrOne = &myError{}
+	ErrTwo = new(myError)
 )
 
 func Exported() {
@@ -45,21 +51,25 @@ func Exported() {
 		fmt.Println("nil")
 	}
 
-	if errors.Is(func() error { // want "comparison of pointer to zero-size variable"
+	if errors.Is(func() error { // want "\\(zl:cmi\\+\\)"
 		return ErrOne
 	}(), ErrTwo) {
 		fmt.Println("equal")
 	}
 
-	if ErrOne == ErrTwo { // want "comparison of pointers to zero-size variables"
+	if ErrOne == ErrTwo { // want "\\(zl:cmp\\+\\)"
 		fmt.Println("equal")
 	}
 
-	if ErrOne != ErrTwo { // want "comparison of pointers to zero-size variables"
+	if ErrOne != ErrTwo { // want "\\(zl:cmp\\+\\)"
 		fmt.Println("not equal")
 	}
 
-	if ErrThree != ErrFour {
-		fmt.Println("not equal")
+	if (Is)(ErrOne, ErrTwo) { // want "\\(zl:cmp\\+\\)"
+		fmt.Println("equal")
 	}
+
+	empty := struct{}{}
+	json := (*json.Decoder)(nil)
+	_ = json.Decode(&empty)
 }

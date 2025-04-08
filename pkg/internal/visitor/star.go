@@ -19,43 +19,44 @@ package visitor
 import (
 	"fmt"
 	"go/ast"
-	"go/types"
+
+	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
-// visitStar checks expressions in form *x.
+// visitStar analyzes star expressions (*x).
 func (v *Visitor) visitStar(n *ast.StarExpr) bool {
-	t := v.Pass.TypesInfo.TypeOf(n.X)
-	message, ok := v.zeroSizedStarExpr(t)
-	if !ok {
+	if v.check.StarSeen(n) {
+		return false
+	}
+
+	t := v.check.TypesInfo().TypeOf(n.X)
+	if t == nil {
 		return true
 	}
 
-	fixes := v.removeOp(n, n.X)
-	v.report(n, message, fixes)
-
-	return fixes == nil
-}
-
-func (v *Visitor) zeroSizedStarExpr(t types.Type) (message string, ok bool) {
-	if t == nil {
-		return "", false
-	}
-
-	if p, ok := t.Underlying().(*types.Pointer); ok {
-		if !v.zeroSizedType(p.Elem()) {
-			return "", false
-		}
-
+	if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
 		// *... where the type of ... is a pointer to a zero-size variable.
 		// p := &struct{}{}; _ = *p
-		return fmt.Sprintf("pointer to zero-size variable of type %q", p.Elem()), true
+		message := fmt.Sprintf("dereferencing pointer to zero-size variable of type %q", elem)
+		fixes := v.check.RemoveOp(n, n.X)
+		v.check.Report(n, catDeref, valueMethod, message, fixes)
+
+		return len(fixes) == 0
 	}
 
-	if !v.zeroSizedType(t) {
-		return "", false
+	if v.level.Below(level.Full) {
+		return true
 	}
 
-	// *... where ... is a zero-sized type.
-	// type t struct{}; var _ *t
-	return fmt.Sprintf("pointer to zero-sized type %q", t), true
+	if valueMethod, zeroSized := v.check.ZeroSizedType(t); zeroSized {
+		// *... where ... is a zero-sized type.
+		// type T struct{}; map[]*T, []*T, f[*T]
+		message := fmt.Sprintf("pointer to zero-sized type %q", t)
+		fixes := v.check.RemoveOp(n, n.X)
+		v.check.Report(n, catStarType, valueMethod, message, fixes)
+
+		return len(fixes) == 0
+	}
+
+	return true
 }

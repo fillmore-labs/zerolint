@@ -23,7 +23,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"fillmore-labs.com/zerolint/pkg/internal/excludes"
+	. "fillmore-labs.com/zerolint/pkg/internal/excludes"
 )
 
 const testFile = `# test
@@ -44,6 +44,7 @@ func TestReadExcludes(t *testing.T) {
 		fsys fs.FS
 		name string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -59,13 +60,14 @@ func TestReadExcludes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := excludes.ReadExcludes(tt.args.fsys, tt.args.name)
+			got, err := ReadExcludes(tt.args.fsys, tt.args.name)
 
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("ReadExcludes() error = %v, wantErr %v", err, tt.wantErr)
 
 				return
 			}
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReadExcludes() = %v, want %v", got, tt.want)
 			}

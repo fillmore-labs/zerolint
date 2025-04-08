@@ -22,5 +22,7 @@ import (
 
 // visitFile checks for generated files.
 func (v *Visitor) visitFile(n *ast.File) bool {
-	return !v.gen.Has(n)
+	v.check.Current = n
+
+	return v.generated || !ast.IsGenerated(n)
 }

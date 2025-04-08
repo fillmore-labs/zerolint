@@ -14,45 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package analyzer
+package zerolint
 
 import (
 	"log"
+	"regexp"
 
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"fillmore-labs.com/zerolint/pkg/internal/visitor"
-	"golang.org/x/tools/go/analysis"
+	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
-// NewRun returns a configurable function for the Run field of [Analyzer].
-func NewRun(opts ...Option) func(*analysis.Pass) (any, error) {
-	option := options{
-		Logger: log.Default(),
-	}
-	for _, opt := range opts {
-		opt.apply(&option)
-	}
-
-	v := visitor.New(option)
-
-	return func(pass *analysis.Pass) (any, error) {
-		res, err := v.Run(pass)
-
-		if option.ZeroTrace && v.HasDetected() {
-			option.Logger.Printf("found zero-sized types in %q:\n", v.Pass.Pkg.Path())
-			for name := range v.AllDetected() {
-				option.Logger.Printf("- %s\n", name)
-			}
-		}
-
-		return res, err
-	}
+// options defines configurable parameters for the linter.
+type options struct {
+	visitor.Options
+	logger    *log.Logger
+	zeroTrace bool
+	flags     bool
 }
 
-// options defines configurable parameters for the linter.
-type options = visitor.Options
-
-// Option defines configurations for [NewRun].
+// Option defines configurations for [New].
 type Option interface {
 	apply(opts *options)
 }
@@ -67,7 +48,7 @@ type loggerOption struct {
 }
 
 func (o loggerOption) apply(opts *options) {
-	opts.Logger = o.logger
+	opts.logger = o.logger
 }
 
 // WithExcludes is an [Option] to configure the excluded types.
@@ -83,12 +64,13 @@ func (o excludesOption) apply(opts *options) {
 	if opts.Excludes == nil {
 		opts.Excludes = set.New[string]()
 	}
+
 	for _, exclude := range o.excludes {
 		opts.Excludes.Insert(exclude)
 	}
 }
 
-// WithZeroTrace is an [Option] to configure tracing of zero sized types.
+// WithZeroTrace is an [Option] to configure tracing of zero-sized types.
 func WithZeroTrace(zeroTrace bool) Option { //nolint:ireturn
 	return zeroTraceOption{zeroTrace: zeroTrace}
 }
@@ -98,20 +80,20 @@ type zeroTraceOption struct {
 }
 
 func (o zeroTraceOption) apply(opts *options) {
-	opts.ZeroTrace = o.zeroTrace
+	opts.zeroTrace = o.zeroTrace
 }
 
-// WithFull is an [Option] to configure full linting.
-func WithFull(full bool) Option { //nolint:ireturn
-	return fullOption{full: full}
+// WithLevel is an [Option] to configure full linting.
+func WithLevel(level level.LintLevel) Option { //nolint:ireturn
+	return levelOption{level: level}
 }
 
-type fullOption struct {
-	full bool
+type levelOption struct {
+	level level.LintLevel
 }
 
-func (o fullOption) apply(opts *options) {
-	opts.Full = o.full
+func (o levelOption) apply(opts *options) {
+	opts.Level = o.level
 }
 
 // WithGenerated is an [Option] to configure linting of generated files.
@@ -125,4 +107,33 @@ type generatedOption struct {
 
 func (o generatedOption) apply(opts *options) {
 	opts.Generated = o.generated
+}
+
+// WithRegex is an [Option] to configure detecting only matching types.
+func WithRegex(re *regexp.Regexp) Option { //nolint:ireturn
+	return reOption{re: re}
+}
+
+type reOption struct {
+	re *regexp.Regexp
+}
+
+func (o reOption) apply(opts *options) {
+	opts.Regex = o.re
+}
+
+// WithFlags is an [Option] to configure parsing of command-line flags.
+// When enabled, command-line flags (e.g., -level, -excluded) will be parsed
+// and will override any corresponding options set programmatically via other `With...` functions.
+// If the "-V" flag is specified on the command line, it prints the program version and exits.
+func WithFlags(flags bool) Option { //nolint:ireturn
+	return flagsOption{flags: flags}
+}
+
+type flagsOption struct {
+	flags bool
+}
+
+func (o flagsOption) apply(opts *options) {
+	opts.flags = o.flags
 }
