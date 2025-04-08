@@ -16,35 +16,33 @@
 
 package a
 
-import (
-	"fmt"
-)
+import "fmt"
 
 func Exported() {
 	var x [0]string
 	var y [0]string
 
-	_ = (new)(struct{}) // want "new called on zero-sized type"
+	_ = (new)(struct{}) // want "\\(zl:new\\)"
 
 	type empty struct{}
-	_ = new(empty) // want "new called on zero-sized type"
+	_ = new(empty) // want "\\(zl:new\\)"
 
-	xp, yp := &x, &y // want "address of zero-size variable" "address of zero-size variable"
+	xp, yp := &x, &y // want "\\(zl:add\\)" "\\(zl:add\\)"
 
-	_ = *xp // want "pointer to zero-size variable"
+	_ = *xp // want "\\(zl:der\\)"
 
-	if xp == yp { // want "comparison of pointers to zero-size variables"
+	if xp == yp { // want "\\(zl:cmp\\)"
 		fmt.Println("equal")
 	}
 
-	if xp != yp { // want "comparison of pointers to zero-size variables"
+	if xp != yp { // want "\\(zl:cmp\\)"
 		fmt.Println("not equal")
 	}
 
-	_, _ = any(xp).((*[0]string)) // want "pointer to zero-sized type"
+	_, _ = any(xp).((*[0]string)) // want "\\(zl:art\\)"
 
 	switch any(xp).(type) {
-	case (*[0]string): // want "pointer to zero-sized type"
+	case (*[0]string): // want "\\(zl:art\\)"
 	case string:
 	}
 }

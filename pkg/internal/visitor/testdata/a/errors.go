@@ -18,9 +18,8 @@ package a
 
 import (
 	"errors"
-	"fmt"
-
 	. "errors"
+	"fmt"
 
 	xerrors "golang.org/x/exp/errors"
 )
@@ -38,7 +37,7 @@ func IgnoreErrors() {
 		fmt.Println("nil")
 	}
 
-	var oneErr *typedError[int] // want "pointer to zero-sized type"
+	var oneErr *typedError[int] // want "\\(zl:var\\)"
 	if errors.As(ErrOne, &oneErr) {
 		fmt.Println("ErrOne is typedError[int]")
 	}
@@ -48,21 +47,25 @@ func IgnoreErrors() {
 		if errors.Is(ErrOne, ErrTwo) {
 			fmt.Println("one is two")
 		}
-		if Is(ErrOne, ErrTwo) { // want "comparison of pointers to zero-size variables"
+		if Is(ErrOne, ErrTwo) { // want "\\(zl:cmp\\)"
 			fmt.Println("one is two")
 		}
 	}()
 
-	if xerrors.Is(func() error { // want "comparison of pointer to zero-size variable"
+	if xerrors.Is(func() error { // want "\\(zl:cme\\)"
 		return ErrOne
 	}(), ErrTwo) {
 		fmt.Println("equal")
 	}
 
-	errors.Is(ErrOne, error(ErrTwo)) // want "comparison of pointer to zero-size variable"
+	errors.Is(ErrOne, error(ErrTwo)) // want "\\(zl:cme\\)"
 
-	var err *typedError[int] // want "pointer to zero-sized type"
+	var err *typedError[int] // want "\\(zl:var\\)"
 	_ = errors.As(ErrOne, &err)
 
 	_ = errors.Join(ErrOne, ErrTwo)
+
+	_ = errors.Unwrap(ErrOne)
+
+	_ = (any)(nil) == ErrOne // want "\\(zl:cmi\\)"
 }

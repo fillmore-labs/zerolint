@@ -7,9 +7,6 @@ run:
 formatters:
   enable:
     - gofumpt
-  settings:
-    gofumpt:
-      module-path: fillmore-labs.com/zerolint
 
 linters:
   default: all
@@ -21,7 +18,6 @@ linters:
     - nonamedreturns
     - varnamelen
     - wrapcheck
-    - wsl
   settings:
     errcheck:
       exclude-functions:
@@ -33,6 +29,9 @@ linters:
       settings:
         shadow:
           strict: true
+        printf:
+          funcs:
+            - fillmore-labs.com/zerolint/pkg/internal/visitor.newMessageCategorized
     testifylint:
       enable-all: true
       disable:
@@ -55,27 +54,29 @@ linters:
         - name: dot-imports
           exclude: ["TEST"]
         - name: early-return
+          arguments:
+            - allow-jump: true
+        - name: empty-block
+        - name: error-naming
         - name: error-return
         - name: error-strings
-        - name: error-naming
-        - name: exported
-        - name: increment-decrement
-        - name: var-naming
-        - name: var-declaration
-        - name: range
-        - name: receiver-naming
-        - name: time-naming
-        - name: unexported-return
-        - name: indent-error-flow
         - name: errorf
-        - name: empty-block
-        - name: superfluous-else
-        - name: unused-parameter
-        - name: unreachable-code
-        - name: redefines-builtin-id
+        - name: exported
         - name: file-header
           arguments:
             - "Copyright 2024 Oliver Eikemeier. All Rights Reserved."
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: var-declaration
+        - name: var-naming
   exclusions:
     rules:
       - path: _test\.go$

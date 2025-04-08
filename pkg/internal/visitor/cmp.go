@@ -17,93 +17,101 @@
 package visitor
 
 import (
-	"fmt"
 	"go/ast"
 	"go/types"
+
+	"fillmore-labs.com/zerolint/pkg/internal/checker"
 )
 
 // operandInfo holds type information for comparison operands.
 type operandInfo struct {
-	zeroSizedPointer bool
-	elem             types.Type
+	zeroSizedPointer, valueMethod bool
+	infoType                      types.Type
 }
 
-type comparison struct {
-	left, right operandInfo
-}
-
-// visitCmp checks comparisons like x == y, x != y and errors.Is(x, y).
+// visitCmp analyzes comparison expressions (x == y, x != y, errors.Is(x, y)) for comparisons
+// involving pointers to zero-sized types.
 func (v *Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
-	var p comparison
-	var ok bool
-	if p.left, ok = v.operandInfo(x); !ok {
-		return true
-	}
-	if p.right, ok = v.operandInfo(y); !ok {
+	var (
+		left, right operandInfo
+		ok          bool
+	)
+
+	if left, ok = v.operandInfo(x); !ok {
 		return true
 	}
 
-	var message string
+	if right, ok = v.operandInfo(y); !ok {
+		return true
+	}
+
+	var cM checker.CategorizedMessage
+
 	switch {
-	case p.left.zeroSizedPointer && p.right.zeroSizedPointer:
-		message = p.comparisonMessage()
+	case left.zeroSizedPointer && right.zeroSizedPointer:
+		cM = comparisonMessage(left.infoType, right.infoType, left.valueMethod || right.valueMethod)
 
-	case p.left.zeroSizedPointer:
-		message = p.comparisonMessageLeft()
+	case left.zeroSizedPointer:
+		cM = comparisonMessagePointerInterface(left.infoType, right.infoType, left.valueMethod)
 
-	case p.right.zeroSizedPointer:
-		message = p.comparisonMessageRight()
+	case right.zeroSizedPointer:
+		cM = comparisonMessagePointerInterface(right.infoType, left.infoType, right.valueMethod)
 
 	default:
 		return true
 	}
 
-	v.report(n, message, nil)
+	v.check.Report(n, cM, nil)
 
 	// no fixes, so dive deeper.
 	return true
 }
 
-// operandInfo extracts relevant type information for comparison.
+// operandInfo extracts type information about comparison operands,
+// identifying whether they are pointers to zero-sized types or interfaces.
 func (v *Visitor) operandInfo(x ast.Expr) (operandInfo, bool) {
-	tv := v.Pass.TypesInfo.Types[x]
+	tv := v.check.TypesInfo().Types[x]
 	if tv.IsNil() {
 		return operandInfo{}, false // comparisons to nil are not flagged
 	}
 
-	switch t := tv.Type.Underlying().(type) {
-	case *types.Pointer:
-		if !v.zeroSizedType(t.Elem()) {
-			return operandInfo{}, false
-		}
+	t := tv.Type.Underlying()
 
-		return operandInfo{zeroSizedPointer: true, elem: t.Elem()}, true // comparisons with a zero-sized pointer
-
-	case *types.Interface:
-		return operandInfo{elem: tv.Type}, true // comparisons with an interface
-
-	default:
-		return operandInfo{}, false // other comparisons
-	}
-}
-
-// comparisonMessage determines the appropriate message for comparison of two pointers.
-func (c comparison) comparisonMessage() string {
-	if c.left.elem == c.right.elem {
-		return fmt.Sprintf("comparison of pointers to zero-size variables of type %q", c.left.elem)
+	if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
+		return operandInfo{zeroSizedPointer: true, valueMethod: valueMethod, infoType: elem},
+			true // comparisons with a pointer to zero-size vriable
 	}
 
-	return fmt.Sprintf("comparison of pointers to zero-size variables of types %q and %q", c.left.elem, c.right.elem)
+	if _, ok := t.(*types.Interface); ok {
+		return operandInfo{infoType: tv.Type}, true // comparisons with an interface
+	}
+
+	return operandInfo{}, false // other comparisons
 }
 
-// comparisonMessageLeft determines the appropriate message for pointer-to-interface comparison.
-func (c comparison) comparisonMessageLeft() string {
-	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface of type %q",
-		c.left.elem, c.right.elem)
+// comparisonMessage generates a diagnostic message for comparing two pointers to zero-sized types.
+func comparisonMessage(left, right types.Type, valueMethod bool) checker.CategorizedMessage {
+	leftTypeString := types.TypeString(left, nil)
+	rightTypeString := types.TypeString(right, nil)
+
+	if leftTypeString == rightTypeString { // types.Identical ignores aliases
+		return msgFormatf(catComparison, valueMethod, "comparison of pointers to zero-size type %q", leftTypeString)
+	}
+
+	return msgFormatf(catComparison, valueMethod,
+		"comparison of pointers to zero-size types %q and %q", leftTypeString, rightTypeString)
 }
 
-// comparisonMessageRight determines the appropriate message for interface to pointer comparison.
-func (c comparison) comparisonMessageRight() string {
-	return fmt.Sprintf("comparison of pointer to zero-size variable of type %q with interface of type %q",
-		c.right.elem, c.left.elem)
+// comparisonMessagePointerInterface generates a diagnostic message for pointer-to-interface comparison.
+func comparisonMessagePointerInterface(elemOp, interfaceOp types.Type, valueMethod bool) checker.CategorizedMessage {
+	elemTypeString := types.TypeString(elemOp, nil)
+	interfaceTypeString := types.TypeString(interfaceOp, nil)
+
+	if interfaceTypeString == "error" {
+		return msgFormatf(catComparisonError, valueMethod,
+			"comparison of pointer to zero-size type %q with error interface", elemTypeString)
+	}
+
+	return msgFormatf(catComparisonInterface, valueMethod,
+		"comparison of pointer to zero-size type %q with interface of type %q", elemTypeString, interfaceTypeString)
 }
