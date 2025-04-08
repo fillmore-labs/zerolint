@@ -23,7 +23,7 @@ import (
 
 type myError struct{}
 
-func (*myError) Error() string {
+func (*myError) Error() string { // want "\\(zl:err\\)"
 	return "my error"
 }
 
@@ -45,17 +45,17 @@ func Exported() {
 		fmt.Println("nil")
 	}
 
-	if errors.Is(func() error { // want "comparison of pointer to zero-size variable"
+	if errors.Is(func() error { // want "\\(zl:cmi\\)"
 		return ErrOne
 	}(), ErrTwo) {
 		fmt.Println("equal")
 	}
 
-	if ErrOne == ErrTwo { // want "comparison of pointers to zero-size variables"
+	if ErrOne == ErrTwo { // want "\\(zl:cmp\\)"
 		fmt.Println("equal")
 	}
 
-	if ErrOne != ErrTwo { // want "comparison of pointers to zero-size variables"
+	if ErrOne != ErrTwo { // want "\\(zl:cmp\\)"
 		fmt.Println("not equal")
 	}
 

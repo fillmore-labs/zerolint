@@ -30,7 +30,7 @@ import (
 func main() {
 	a := analyzer.Analyzer
 	addVersionFlag(&a.Flags)
-	singlechecker.Main(analyzer.Analyzer)
+	singlechecker.Main(a)
 }
 
 func addVersionFlag(s *flag.FlagSet) {

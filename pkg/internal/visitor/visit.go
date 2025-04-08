@@ -20,10 +20,12 @@ import (
 	"go/ast"
 )
 
-// visit is the main functions called by inspector.Nodes for analysis.
-func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) {
+// visit is the central visitor function called by `inspector.Nodes`.
+// It receives AST nodes during traversal and dispatches them to specific
+// `visit*` methods based on the node type for detailed analysis.
+func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) { //nolint:cyclop
 	if !push {
-		return true
+		return true // Only process nodes when entering
 	}
 
 	switch n := n.(type) {
@@ -41,6 +43,27 @@ func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) {
 
 	case *ast.File:
 		return v.visitFile(n)
+
+	case *ast.FuncDecl:
+		return v.visitFuncDecl(n)
+
+	case *ast.FuncLit:
+		return v.visitFuncLit(n)
+
+	case *ast.TypeAssertExpr:
+		return v.visitTypeAssert(n)
+
+	case *ast.StructType:
+		return v.visitStructType(n)
+
+	case *ast.FuncType:
+		return v.visitFuncType(n)
+
+	case *ast.ValueSpec:
+		return v.visitValueSpec(n)
+
+	case *ast.TypeSpec:
+		return v.visitTypeSpec(n)
 
 	default:
 		return true

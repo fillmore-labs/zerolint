@@ -19,6 +19,7 @@ package analyzer
 import (
 	"log"
 
+	"fillmore-labs.com/zerolint/pkg/analyzer/level"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"fillmore-labs.com/zerolint/pkg/internal/visitor"
 	"golang.org/x/tools/go/analysis"
@@ -26,11 +27,13 @@ import (
 
 // NewRun returns a configurable function for the Run field of [Analyzer].
 func NewRun(opts ...Option) func(*analysis.Pass) (any, error) {
-	option := options{
-		Logger: log.Default(),
-	}
+	var option options
 	for _, opt := range opts {
 		opt.apply(&option)
+	}
+
+	if option.Logger == nil {
+		option.Logger = log.Default()
 	}
 
 	v := visitor.New(option)
@@ -39,7 +42,8 @@ func NewRun(opts ...Option) func(*analysis.Pass) (any, error) {
 		res, err := v.Run(pass)
 
 		if option.ZeroTrace && v.HasDetected() {
-			option.Logger.Printf("found zero-sized types in %q:\n", v.Pass.Pkg.Path())
+			option.Logger.Printf("found zero-sized types in %q:\n", pass.Pkg.Path())
+
 			for name := range v.AllDetected() {
 				option.Logger.Printf("- %s\n", name)
 			}
@@ -83,12 +87,13 @@ func (o excludesOption) apply(opts *options) {
 	if opts.Excludes == nil {
 		opts.Excludes = set.New[string]()
 	}
+
 	for _, exclude := range o.excludes {
 		opts.Excludes.Insert(exclude)
 	}
 }
 
-// WithZeroTrace is an [Option] to configure tracing of zero sized types.
+// WithZeroTrace is an [Option] to configure tracing of zero-sized types.
 func WithZeroTrace(zeroTrace bool) Option { //nolint:ireturn
 	return zeroTraceOption{zeroTrace: zeroTrace}
 }
@@ -101,17 +106,17 @@ func (o zeroTraceOption) apply(opts *options) {
 	opts.ZeroTrace = o.zeroTrace
 }
 
-// WithFull is an [Option] to configure full linting.
-func WithFull(full bool) Option { //nolint:ireturn
-	return fullOption{full: full}
+// WithLevel is an [Option] to configure full linting.
+func WithLevel(level level.LintLevel) Option { //nolint:ireturn
+	return levelOption{level: level}
 }
 
-type fullOption struct {
-	full bool
+type levelOption struct {
+	level level.LintLevel
 }
 
-func (o fullOption) apply(opts *options) {
-	opts.Full = o.full
+func (o levelOption) apply(opts *options) {
+	opts.Level = o.level
 }
 
 // WithGenerated is an [Option] to configure linting of generated files.

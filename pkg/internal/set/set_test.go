@@ -73,6 +73,7 @@ func TestSorted(t *testing.T) {
 	type args struct {
 		s Set[int]
 	}
+
 	tests := []struct {
 		name string
 		args args

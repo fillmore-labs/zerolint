@@ -53,6 +53,7 @@ func (s Set[T]) Has(t T) bool {
 func (s Set[T]) Elements() []T {
 	sl := make([]T, len(s))
 	i := 0
+
 	for n := range s {
 		sl[i] = n
 		i++

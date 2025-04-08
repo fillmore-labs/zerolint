@@ -18,6 +18,9 @@
 package analyzer
 
 import (
+	"log"
+
+	"fillmore-labs.com/zerolint/pkg/analyzer/level"
 	"fillmore-labs.com/zerolint/pkg/internal/excludes"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -48,17 +51,20 @@ var (
 	// ZeroTrace enables tracing of found zero-sized types.
 	ZeroTrace bool
 
-	// Full enables full analysis, which should be handles manually.
-	Full bool
+	// Level enables full analysis, which should be handles manually.
+	Level level.LintLevel
 
 	// Generated enables checking generated files.
 	Generated bool
+
+	// Logger to log found zero-sized types to.
+	Logger *log.Logger
 )
 
 func init() { //nolint:gochecknoinits
 	Analyzer.Flags.StringVar(&Excludes, "excluded", "", "read excluded types from this file")
 	Analyzer.Flags.BoolVar(&ZeroTrace, "zerotrace", false, "trace found zero-sized types")
-	Analyzer.Flags.BoolVar(&Full, "full", false, "full analysis")
+	Analyzer.Flags.TextVar(&Level, "level", level.Default, "analysis level (Default, Extended, Full)")
 	Analyzer.Flags.BoolVar(&Generated, "generated", false, "check generated files")
 }
 
@@ -73,7 +79,8 @@ func run(pass *analysis.Pass) (any, error) {
 	return NewRun(
 		WithExcludes(ex),
 		WithZeroTrace(ZeroTrace),
-		WithFull(Full),
+		WithLevel(Level),
 		WithGenerated(Generated),
+		WithLogger(Logger),
 	)(pass)
 }

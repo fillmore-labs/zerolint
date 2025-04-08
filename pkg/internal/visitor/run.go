@@ -19,11 +19,11 @@ package visitor
 import (
 	"errors"
 	"go/ast"
-	"go/token"
 	"iter"
 	"log"
-	"strings"
 
+	"fillmore-labs.com/zerolint/pkg/analyzer/level"
+	"fillmore-labs.com/zerolint/pkg/internal/base"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -35,110 +35,88 @@ type Options struct {
 	Logger    *log.Logger
 	Excludes  set.Set[string]
 	ZeroTrace bool
-	Full      bool
+	Level     level.LintLevel
 	Generated bool
 }
 
-// Visitor is an AST visitor for analyzing usage of pointers to zero-size variables.
+// Visitor is an AST visitor for analyzing the usage of pointers to zero-size variables.
+// It identifies various patterns where such pointers might be used unnecessarily.
 type Visitor struct {
-	Pass            *analysis.Pass
-	excludes        set.Set[string]
-	detected        set.Set[string]
-	gen             set.Set[*ast.File]
-	ignored         set.Set[token.Pos]
-	full, generated bool
+	base      base.Base
+	level     int
+	generated bool
 }
 
-// New returns a [Visitor] configured with [Options].
+// New creates a new [Visitor] configured with the provided [Options].
 func New(opt Options) *Visitor {
 	return &Visitor{
-		excludes:  opt.Excludes,
-		full:      opt.Full,
+		base: base.Base{
+			Excludes: opt.Excludes,
+		},
+		level:     int(opt.Level),
 		generated: opt.Generated,
 	}
 }
 
-// HasDetected tells whether zero-sized types have been detected.
+// HasDetected tells whether any zero-sized types have been detected during analysis.
 func (v *Visitor) HasDetected() bool {
-	return len(v.detected) > 0
+	return len(v.base.Detected) > 0
 }
 
-// AllDetected returns an iterator over the detected zero-sized types in alphabetical order.
+// AllDetected returns a sorted iterator over all detected zero-sized types.
 func (v *Visitor) AllDetected() iter.Seq[string] {
-	return set.AllSorted(v.detected)
+	return set.AllSorted(v.base.Detected)
 }
 
 // ErrNoInspectorResult is returned when the ast inspetor is missing.
 var ErrNoInspectorResult = errors.New("zerolint: inspector result missing")
 
-const zerolintExclude = "zerolint:exclude"
-
-// Run runs the analysis.
+// Run performs the actual analysis on the provided [analysis.Pass].
 func (v *Visitor) Run(pass *analysis.Pass) (any, error) {
-	v.Pass = pass
-	in, ok := v.Pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	v.base.Prepare(pass)
+
+	if v.base.Excludes == nil {
+		v.base.Excludes = set.New[string]()
+	}
+
+	nodes, f := v.selectVisitFunc()
+
+	in, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	if !ok {
 		return nil, ErrNoInspectorResult
 	}
 
-	v.calcIgnored(in)
-
-	if v.excludes == nil {
-		v.excludes = set.New[string]()
-	}
-	v.excludes.Insert("runtime.Func")
-	v.detected = set.New[string]()
-
-	types, f := v.selectVisitFunc()
-	in.Nodes(types, f)
+	in.Nodes(nodes, f)
 
 	return any(nil), nil
 }
 
-func (v *Visitor) calcIgnored(in *inspector.Inspector) {
-	v.gen = set.New[*ast.File]()
-	v.ignored = set.New[token.Pos]()
-	var isGen bool
-	for n := range in.PreorderSeq((*ast.File)(nil), (*ast.TypeSpec)(nil)) {
-		switch n := n.(type) {
-		case *ast.File:
-			isGen = ast.IsGenerated(n)
-			if isGen {
-				v.gen.Insert(n)
-			}
-
-		case *ast.TypeSpec:
-			if isGen {
-				v.ignored.Insert(n.Name.NamePos)
-
-				continue
-			}
-
-			if group := n.Comment; group != nil {
-				for _, c := range group.List {
-					if strings.Contains(c.Text, zerolintExclude) {
-						v.ignored.Insert(n.Name.NamePos)
-
-						break
-					}
-				}
-			}
-		}
-	}
-}
-
-// visitFunc determines parameters and function to call for inspector.Nodes.
+// selectVisitFunc determines which AST node types to inspect based on the Visitor's configuration
+// (e.g., `level`, `generated` flags) and returns the appropriate visitor function for the inspector.
 func (v *Visitor) selectVisitFunc() ([]ast.Node, func(n ast.Node, push bool) (proceed bool)) {
-	types := make([]ast.Node, 0, 5) //nolint:mnd
+	const maxNodes = 12
+	nodes := make([]ast.Node, 0, maxNodes)
 
-	types = append(types, (*ast.BinaryExpr)(nil), (*ast.CallExpr)(nil))
-	if !v.generated {
-		types = append(types, (*ast.File)(nil))
+	nodes = append(nodes,
+		(*ast.BinaryExpr)(nil),
+		(*ast.CallExpr)(nil),
+		(*ast.File)(nil),
+		(*ast.FuncDecl)(nil),
+		(*ast.StructType)(nil),
+		(*ast.TypeSpec)(nil),
+	)
+
+	if v.level > 1 {
+		// More node nodes are included when `level` is true to perform a more thorough analysis.
+		nodes = append(nodes,
+			(*ast.FuncLit)(nil),
+			(*ast.FuncType)(nil),
+			(*ast.StarExpr)(nil),
+			(*ast.TypeAssertExpr)(nil),
+			(*ast.UnaryExpr)(nil),
+			(*ast.ValueSpec)(nil),
+		)
 	}
 
-	if v.full {
-		types = append(types, (*ast.StarExpr)(nil), (*ast.UnaryExpr)(nil))
-	}
-
-	return types, v.visit
+	return nodes, v.visit
 }

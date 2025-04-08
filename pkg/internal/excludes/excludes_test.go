@@ -44,6 +44,7 @@ func TestReadExcludes(t *testing.T) {
 		fsys fs.FS
 		name string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -66,6 +67,7 @@ func TestReadExcludes(t *testing.T) {
 
 				return
 			}
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReadExcludes() = %v, want %v", got, tt.want)
 			}

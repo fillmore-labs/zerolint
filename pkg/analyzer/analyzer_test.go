@@ -17,6 +17,9 @@
 package analyzer_test
 
 import (
+	"bytes"
+	"log"
+	"strings"
 	"testing"
 
 	"fillmore-labs.com/zerolint/pkg/analyzer"
@@ -31,19 +34,29 @@ func TestAnalyzer(t *testing.T) { //nolint:tparallel
 	type args struct {
 		excludes string
 	}
+
 	tests := []struct {
 		name string
 		args args
+		want string
 	}{
-		{"basic", args{dir + "/excluded.txt"}},
+		{"basic", args{dir + "/excluded.txt"}, "go.test/basic.myError"},
 	}
-
 	for _, tt := range tests { //nolint:paralleltest
-		a := analyzer.Analyzer
+		var buf bytes.Buffer
+
 		analyzer.Excludes = tt.args.excludes
+		analyzer.Logger = log.New(&buf, "", 0)
+		analyzer.ZeroTrace = true
+
+		a := analyzer.Analyzer
 
 		t.Run(tt.name, func(t *testing.T) {
 			analysistest.Run(t, dir, a, "go.test/basic")
 		})
+
+		if got := buf.String(); !strings.Contains(got, tt.want) {
+			t.Errorf("expected log to contain %s, got:\n%s", tt.want, got)
+		}
 	}
 }

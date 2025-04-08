@@ -20,28 +20,40 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 )
 
 // visitCall checks for type casts T(x), errors.Is(x, y), errors.As(x, y) and new(T).
-func (v *Visitor) visitCall(n *ast.CallExpr) bool {
-	switch funType := v.Pass.TypesInfo.Types[n.Fun]; {
+func (v *Visitor) visitCall(n *ast.CallExpr) bool { //nolint:cyclop
+	switch funType := v.base.TypesInfo().Types[n.Fun]; {
 	case funType.IsBuiltin(): // Check for calls to new(T).
-		if !v.full {
+		if v.level < 2 { //nolint:mnd
 			return true
 		}
 
 		return v.visitBuiltin(n)
 
 	case funType.IsType(): // Check for type casts T(...).
-		if !v.full {
+		if v.level < 2 { //nolint:mnd
 			return true
 		}
 
 		return v.visitCast(n, funType.Type)
 
-	case funType.IsValue(): // Check for errors.Is(x, y) and errors.As(x, y).
+	case funType.IsValue():
+		if id, ok := n.Fun.(*ast.Ident); ok && strings.HasPrefix(id.Name, "_Cfunc_") {
+			return false
+		}
+
+		if v.level > 1 {
+			if sig, ok := funType.Type.(*types.Signature); ok {
+				v.visitCallArgs(sig, n.Args)
+			}
+		}
+
+		// Check for errors.Is(x, y) and errors.As(x, y).
 		return v.visitCallFun(n)
 
 	default:
@@ -49,11 +61,42 @@ func (v *Visitor) visitCall(n *ast.CallExpr) bool {
 	}
 }
 
+// visitCallArgs checks explicit nil arguments to pointers to zero-sized parameters.
+func (v *Visitor) visitCallArgs(sig *types.Signature, args []ast.Expr) {
+	params := sig.Params()
+	for i := range min(params.Len(), len(args)) { // Don't deal with variadic functions for now
+		param := params.At(i)
+		if elem, valueMethod, zeroSized := v.base.ZeroSizedTypePointer(param.Type()); zeroSized {
+			arg := args[i]
+			if tv, ok := v.base.TypesInfo().Types[arg]; ok && tv.IsNil() {
+				var message string
+				if name := param.Name(); name == "" {
+					message = fmt.Sprintf("passing explicit nil as parameter pointer to zero-sized type %q", elem)
+				} else {
+					message = fmt.Sprintf("passing explicit nil as parameter %q pointing to zero-sized type %q", name, elem)
+				}
+
+				fixes := v.base.ReplaceWithZeroValue(arg, elem)
+				v.base.Report(arg, catNilParameter, valueMethod, message, fixes)
+			}
+		}
+	}
+}
+
 // visitCallFun checks for encoding/json#Decoder.Decode, json.Unmarshal, errors.Is and errors.As.
 func (v *Visitor) visitCallFun(n *ast.CallExpr) bool {
 	switch fun := ast.Unparen(n.Fun).(type) {
 	case *ast.SelectorExpr:
-		return v.visitCallSelector(n, fun)
+		if sel, ok := v.base.TypesInfo().Selections[fun]; ok {
+			// Selection expression
+			if v.level < 2 { //nolint:mnd
+				return true
+			}
+
+			return v.visitCallSelection(fun, sel)
+		}
+
+		return v.visitCallIdent(n, fun.Sel)
 
 	case *ast.Ident:
 		return v.visitCallIdent(n, fun)
@@ -63,38 +106,26 @@ func (v *Visitor) visitCallFun(n *ast.CallExpr) bool {
 	}
 }
 
-func (v *Visitor) visitCallSelector(n *ast.CallExpr, fun *ast.SelectorExpr) bool {
-	if sel, ok := v.Pass.TypesInfo.Selections[fun]; ok {
-		// Selection expression
-		if !v.full {
-			return true
-		}
-
-		return v.visitCallSelection(fun, sel)
-	}
-
-	path, name, ok := v.selPathName(fun)
-	if !ok {
-		return true
-	}
-
-	return v.visitCallQualifiedIdent(n, path, name)
-}
-
+// visitCallSelection handles method expressions selected from a value (dec.Decode(...)) or type
+// ((*json.Decoder).Decode).
+// For method values, it delegates to visitMethodVal.
+// For method expressions with receivers that are pointers to zero-sized types, it reports an issue.
 func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection) bool {
 	switch sel.Kind() { //nolint:exhaustive
 	case types.MethodVal:
 		// Delegate selections like encoding/json#Decoder.Decode.
-		return visitSelectionCall(sel)
+		return visitMethodVal(sel)
 
 	case types.MethodExpr:
-		elem, ok := v.zeroSizedTypePointer(sel.Recv())
-		if !ok { // Not a pointer receiver or no pointer to a zero-sized type.
+		// Method used as a function value (e.g., (*T).Method).
+		elem, valueMethod, zeroSized := v.base.ZeroSizedTypePointer(sel.Recv())
+		if !zeroSized { // Not a method expression with a pointer receiver to a zero-sized type.
 			return true
 		}
 
 		message := fmt.Sprintf("method expression receiver is pointer to zero-size variable of type %q", elem)
-		v.report(fun, message, nil) // Will be fixed by StarExpr.
+		fixes := v.base.RemoveStar(fun.X)
+		v.base.Report(fun, catMethodExpression, valueMethod, message, fixes)
 
 		return true
 
@@ -103,87 +134,93 @@ func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection
 	}
 }
 
-func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool {
-	path, name, ok := v.identPathName(fun)
-	if !ok {
+// visitCallIdent processes encoding/json.Unmarshal (ignored as it requires pointer arguments),
+// errors.Is and errors.As from the standard library or golang.org/x/exp/errors.
+func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolint:cyclop
+	obj := v.base.TypesInfo().Uses[fun]
+	if obj == nil {
 		return true
 	}
 
-	return v.visitCallQualifiedIdent(n, path, name)
-}
-
-func (v *Visitor) visitCallQualifiedIdent(n *ast.CallExpr, path, name string) bool {
-	switch {
-	case path == "encoding/json" && name == "Unmarshal":
-		return false // Do not report pointers in json.Unmarshal(..., ...).
-
-	case len(n.Args) != 2 || path != "errors" && path != "golang.org/x/exp/errors":
-		return true
-
-	case name == "As":
-		return false // Do not report pointers in errors.As(..., ...).
-
-	case name == "Is":
-		// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
-		return v.visitCmp(n, n.Args[0], n.Args[1])
-
-	default:
-		return true
-	}
-}
-
-func (v *Visitor) selPathName(fun *ast.SelectorExpr) (path, name string, ok bool) {
-	id, ok := fun.X.(*ast.Ident)
-	if !ok {
-		return path, name, false
-	}
-
-	pkgname, ok := v.Pass.TypesInfo.Uses[id].(*types.PkgName)
-	if !ok {
-		return path, name, false
-	}
-
-	pkg := pkgname.Imported()
-
-	return pkg.Path(), fun.Sel.Name, true
-}
-
-func (v *Visitor) identPathName(fun *ast.Ident) (path, name string, ok bool) {
-	obj := v.Pass.TypesInfo.Uses[fun]
 	pkg := obj.Pkg()
 	if pkg == nil {
-		return path, name, false
+		return true
 	}
 
-	return pkg.Path(), fun.Name, true
+	path, name := pkg.Path(), obj.Name()
+	switch path {
+	case "encoding/json":
+		if name == "Unmarshal" {
+			return false // Do not report pointers in json.Unmarshal(..., ...).
+		}
+
+		return true
+
+	case "errors", "golang.org/x/exp/errors":
+		if len(n.Args) != 2 { //nolint:mnd
+			return true
+		}
+
+		switch name {
+		case "As":
+			return false // Do not report pointers in errors.As(..., ...).
+
+		case "Is":
+			// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
+			return v.visitCmp(n, n.Args[0], n.Args[1])
+
+		default:
+			return true
+		}
+
+	case "github.com/stretchr/testify/assert", "github.com/stretchr/testify/require":
+		if len(n.Args) < 3 { //nolint:mnd
+			return true
+		}
+
+		switch name {
+		case "ErrorAs", "ErrorAsf", "NotErrorAs", "NotErrorAsf":
+			return false // Do not report pointers in ....ErrorAs(t, ..., ...).
+
+		case "ErrorIs", "ErrorIsf", "NotErrorIs", "NotErrorIsf":
+			// Delegate ....ErrorIs(t, ..., ...) to visitCmp for further analysis of the comparison.
+			return v.visitCmp(n, n.Args[1], n.Args[2])
+
+		default:
+			return true
+		}
+
+	default:
+		return true
+	}
 }
 
-func visitSelectionCall(sel *types.Selection) bool {
+// visitMethodVal checks for method calls on specific receivers, particularly
+// looking for the Decode method on json.Decoder, which requires pointers.
+func visitMethodVal(sel *types.Selection) bool {
 	fun, ok := sel.Obj().(*types.Func)
+	if !ok || fun.Name() != "Decode" { // We are only interested in `Decode`.
+		return true
+	}
+
+	recv := fun.Signature().Recv().Type() // I'm not using sel.Recv(), since [json.Decoder] could be embedded
+
+	typeName, ok := pointerToTypeName(recv)
 	if !ok {
 		return true
 	}
 
-	typeName, ok := receiverPointerToTypeName(fun)
-	if !ok {
-		return true
-	}
-
-	// Check for method call "Decode" on receiver *encoding/json.Decoder.
-	if fun.Name() == "Decode" && typeName.Pkg().Path() == "encoding/json" && typeName.Name() == "Decoder" {
+	// Check for method receiver *encoding/json.Decoder.
+	if typeName.Pkg().Path() == "encoding/json" && typeName.Name() == "Decoder" {
 		return false // Do not report pointers in json.Decoder#Decode.
 	}
 
 	return true
 }
 
-func receiverPointerToTypeName(fun *types.Func) (*types.TypeName, bool) {
-	recv := fun.Signature().Recv()
-	if recv == nil {
-		return nil, false
-	}
-
-	ptr, ok := types.Unalias(recv.Type()).(*types.Pointer)
+// pointerToTypeName extracts the underlying named type from a pointer type.
+func pointerToTypeName(t types.Type) (*types.TypeName, bool) {
+	ptr, ok := types.Unalias(t).(*types.Pointer)
 	if !ok {
 		return nil, false
 	}
@@ -196,51 +233,62 @@ func receiverPointerToTypeName(fun *types.Func) (*types.TypeName, bool) {
 	return elem.Obj(), true
 }
 
-// visitCast is called for type casts T(nil).
+// visitCast checks for type casts of nil to pointers of zero-sized types, like (*struct{})(nil).
 func (v *Visitor) visitCast(n *ast.CallExpr, t types.Type) bool {
 	if len(n.Args) != 1 {
 		return true
 	}
 
-	if arg, ok := v.Pass.TypesInfo.Types[n.Args[0]]; !ok || !arg.IsNil() {
+	elem, valueMethod, zeroSized := v.base.ZeroSizedTypePointer(t)
+	if !zeroSized { // Not a pointer to a zero-sized type.
 		return true
 	}
 
-	elem, ok := v.zeroSizedTypePointer(t)
-	if !ok { // Not a pointer to a zero-sized type.
+	tv, ok := v.base.TypesInfo().Types[n.Args[0]]
+	if !ok {
 		return true
 	}
 
-	message := fmt.Sprintf("cast of nil to pointer to zero-size variable of type %q", elem)
+	var message string
+
+	if tv.IsNil() {
+		message = fmt.Sprintf("cast of nil to pointer to zero-size type %q", elem)
+	} else {
+		message = fmt.Sprintf("cast of expression of type %q to pointer to zero-size type %q", tv.Type, elem)
+	}
+
 	var fixes []analysis.SuggestedFix
 	if s, ok := ast.Unparen(n.Fun).(*ast.StarExpr); ok {
-		fixes = v.makePure(n, s.X)
+		fixes = v.base.MakePure(n, s.X)
 	}
 
-	v.report(n, message, fixes)
+	v.base.Report(n, catCast, valueMethod, message, fixes)
 
-	return fixes == nil
+	return len(fixes) == 0
 }
 
-// visitBuiltin is called for calls to new(T).
+// visitBuiltin examines calls to new(T), where T is a zero-sized type.
 func (v *Visitor) visitBuiltin(n *ast.CallExpr) bool {
 	if len(n.Args) != 1 {
 		return true
 	}
+
 	fun, ok := ast.Unparen(n.Fun).(*ast.Ident)
 	if !ok || fun.Name != "new" {
 		return true
 	}
 
 	arg := n.Args[0] // new(arg).
-	argType := v.Pass.TypesInfo.TypeOf(arg)
-	if !v.zeroSizedType(argType) {
+	argType := v.base.TypesInfo().TypeOf(arg)
+
+	valueMethod, zeroSized := v.base.ZeroSizedType(argType)
+	if !zeroSized {
 		return true
 	}
 
 	message := fmt.Sprintf("new called on zero-sized type %q", argType)
-	fixes := v.makePure(n, arg)
-	v.report(n, message, fixes)
+	fixes := v.base.MakePure(n, arg)
+	v.base.Report(n, catNew, valueMethod, message, fixes)
 
-	return fixes == nil
+	return len(fixes) == 0
 }

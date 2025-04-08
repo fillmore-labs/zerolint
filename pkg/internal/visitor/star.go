@@ -22,40 +22,40 @@ import (
 	"go/types"
 )
 
-// visitStar checks expressions in form *x.
+// visitStar analyzes star expressions (*x).
 func (v *Visitor) visitStar(n *ast.StarExpr) bool {
-	t := v.Pass.TypesInfo.TypeOf(n.X)
-	message, ok := v.zeroSizedStarExpr(t)
-	if !ok {
-		return true
+	if v.base.StarSeen(n) {
+		return false
 	}
 
-	fixes := v.removeOp(n, n.X)
-	v.report(n, message, fixes)
+	t := v.base.TypesInfo().TypeOf(n.X)
+	if cat, message, valueMethod, zeroSized := v.zeroSizedStarExpr(t); zeroSized {
+		fixes := v.base.RemoveOp(n, n.X)
+		v.base.Report(n, cat, valueMethod, message, fixes)
 
-	return fixes == nil
+		return len(fixes) == 0
+	}
+
+	return true
 }
 
-func (v *Visitor) zeroSizedStarExpr(t types.Type) (message string, ok bool) {
+// zeroSizedStarExpr analyzes the type in a star expression (*x) to determine if it involves a zero-sized type.
+func (v *Visitor) zeroSizedStarExpr(t types.Type) (cat category, message string, valueMethod, zeroSized bool) {
 	if t == nil {
-		return "", false
+		return catNone, "", false, false
 	}
 
-	if p, ok := t.Underlying().(*types.Pointer); ok {
-		if !v.zeroSizedType(p.Elem()) {
-			return "", false
-		}
-
+	if elem, vM, zS := v.base.ZeroSizedTypePointer(t); zS {
 		// *... where the type of ... is a pointer to a zero-size variable.
 		// p := &struct{}{}; _ = *p
-		return fmt.Sprintf("pointer to zero-size variable of type %q", p.Elem()), true
+		return catDeref, fmt.Sprintf("dereferencing pointer to zero-size variable of type %q", elem), vM, true
 	}
 
-	if !v.zeroSizedType(t) {
-		return "", false
+	if vM, zS := v.base.ZeroSizedType(t); zS {
+		// *... where ... is a zero-sized type.
+		// type t struct{}; case *t:, map[]*t, []*t, A[*t]
+		return catStarType, fmt.Sprintf("pointer to zero-sized type %q", t), vM, true
 	}
 
-	// *... where ... is a zero-sized type.
-	// type t struct{}; var _ *t
-	return fmt.Sprintf("pointer to zero-sized type %q", t), true
+	return catNone, "", false, false
 }

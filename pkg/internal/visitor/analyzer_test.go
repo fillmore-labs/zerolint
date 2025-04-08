@@ -21,6 +21,7 @@ import (
 	"slices"
 	"testing"
 
+	"fillmore-labs.com/zerolint/pkg/analyzer/level"
 	"fillmore-labs.com/zerolint/pkg/internal/excludes"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"fillmore-labs.com/zerolint/pkg/internal/visitor"
@@ -41,22 +42,22 @@ func TestRun(t *testing.T) {
 
 	type args struct {
 		excludes set.Set[string]
-		full     bool
-		pattern  string
+		level    level.LintLevel
+		pkg      string
 	}
+
 	tests := []struct {
 		name string
 		args args
 		want string
 	}{
-		{"basic", args{nil, false, "go.test/basic"}, "go.test/basic.myError"},
-		{"full", args{set.New(ex...), true, "go.test/a"}, "[0]string"},
+		{"basic", args{nil, level.Default, "go.test/basic"}, "go.test/basic.myError"},
+		{"level", args{set.New(ex...), level.Full, "go.test/a"}, "[0]string"},
 	}
-
 	for _, tt := range tests {
 		v := visitor.New(visitor.Options{
 			Excludes: tt.args.excludes,
-			Full:     tt.args.full,
+			Level:    tt.args.level,
 		})
 
 		a := &analysis.Analyzer{
@@ -65,13 +66,14 @@ func TestRun(t *testing.T) {
 			Run:      v.Run,
 			Requires: []*analysis.Analyzer{inspect.Analyzer},
 		}
+
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			analysistest.RunWithSuggestedFixes(t, dir, a, tt.args.pattern)
+			analysistest.RunWithSuggestedFixes(t, dir, a, tt.args.pkg)
 
 			if !v.HasDetected() {
-				t.Error("Expected detection of zero sized types")
+				t.Error("Expected detection of zero-sized types")
 			}
 
 			zerotypes := slices.Collect(v.AllDetected())
