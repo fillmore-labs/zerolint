@@ -53,7 +53,16 @@ func (v *Visitor) visitCall(n *ast.CallExpr) bool {
 func (v *Visitor) visitCallFun(n *ast.CallExpr) bool {
 	switch fun := ast.Unparen(n.Fun).(type) {
 	case *ast.SelectorExpr:
-		return v.visitCallSelector(n, fun)
+		if sel, ok := v.Pass.TypesInfo.Selections[fun]; ok {
+			// Selection expression
+			if !v.full {
+				return true
+			}
+
+			return v.visitCallSelection(fun, sel)
+		}
+
+		return v.visitCallIdent(n, fun.Sel)
 
 	case *ast.Ident:
 		return v.visitCallIdent(n, fun)
@@ -61,24 +70,6 @@ func (v *Visitor) visitCallFun(n *ast.CallExpr) bool {
 	default:
 		return true
 	}
-}
-
-func (v *Visitor) visitCallSelector(n *ast.CallExpr, fun *ast.SelectorExpr) bool {
-	if sel, ok := v.Pass.TypesInfo.Selections[fun]; ok {
-		// Selection expression
-		if !v.full {
-			return true
-		}
-
-		return v.visitCallSelection(fun, sel)
-	}
-
-	path, name, ok := v.selPathName(fun)
-	if !ok {
-		return true
-	}
-
-	return v.visitCallQualifiedIdent(n, path, name)
 }
 
 func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection) bool {
@@ -104,58 +95,41 @@ func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection
 }
 
 func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool {
-	path, name, ok := v.identPathName(fun)
-	if !ok {
+	obj := v.Pass.TypesInfo.Uses[fun]
+	pkg := obj.Pkg()
+	if pkg == nil {
 		return true
 	}
+	path, name := pkg.Path(), obj.Name()
 
-	return v.visitCallQualifiedIdent(n, path, name)
-}
+	switch path {
+	case "encoding/json":
+		if name == "Unmarshal" {
+			return false // Do not report pointers in json.Unmarshal(..., ...).
+		}
 
-func (v *Visitor) visitCallQualifiedIdent(n *ast.CallExpr, path, name string) bool {
-	switch {
-	case path == "encoding/json" && name == "Unmarshal":
-		return false // Do not report pointers in json.Unmarshal(..., ...).
-
-	case len(n.Args) != 2 || path != "errors" && path != "golang.org/x/exp/errors":
 		return true
 
-	case name == "As":
-		return false // Do not report pointers in errors.As(..., ...).
+	case "errors", "golang.org/x/exp/errors":
+		if len(n.Args) != 2 { //nolint:mnd
+			return true
+		}
 
-	case name == "Is":
-		// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
-		return v.visitCmp(n, n.Args[0], n.Args[1])
+		switch name {
+		case "As":
+			return false // Do not report pointers in errors.As(..., ...).
+
+		case "Is":
+			// Delegate errors.Is(..., ...) to visitCmp for further analysis of the comparison.
+			return v.visitCmp(n, n.Args[0], n.Args[1])
+
+		default:
+			return true
+		}
 
 	default:
 		return true
 	}
-}
-
-func (v *Visitor) selPathName(fun *ast.SelectorExpr) (path, name string, ok bool) {
-	id, ok := fun.X.(*ast.Ident)
-	if !ok {
-		return path, name, false
-	}
-
-	pkgname, ok := v.Pass.TypesInfo.Uses[id].(*types.PkgName)
-	if !ok {
-		return path, name, false
-	}
-
-	pkg := pkgname.Imported()
-
-	return pkg.Path(), fun.Sel.Name, true
-}
-
-func (v *Visitor) identPathName(fun *ast.Ident) (path, name string, ok bool) {
-	obj := v.Pass.TypesInfo.Uses[fun]
-	pkg := obj.Pkg()
-	if pkg == nil {
-		return path, name, false
-	}
-
-	return pkg.Path(), fun.Name, true
 }
 
 func visitSelectionCall(sel *types.Selection) bool {
@@ -164,7 +138,7 @@ func visitSelectionCall(sel *types.Selection) bool {
 		return true
 	}
 
-	typeName, ok := receiverPointerToTypeName(fun)
+	typeName, ok := pointerToTypeName(fun.Signature().Recv())
 	if !ok {
 		return true
 	}
@@ -177,13 +151,8 @@ func visitSelectionCall(sel *types.Selection) bool {
 	return true
 }
 
-func receiverPointerToTypeName(fun *types.Func) (*types.TypeName, bool) {
-	recv := fun.Signature().Recv()
-	if recv == nil {
-		return nil, false
-	}
-
-	ptr, ok := types.Unalias(recv.Type()).(*types.Pointer)
+func pointerToTypeName(v *types.Var) (*types.TypeName, bool) {
+	ptr, ok := types.Unalias(v.Type()).(*types.Pointer)
 	if !ok {
 		return nil, false
 	}
