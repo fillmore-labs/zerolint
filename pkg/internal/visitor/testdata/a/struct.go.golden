@@ -20,12 +20,19 @@ type typedError[T any] struct {
 	_ [0]T
 }
 
-func (typedError[_]) Error() string { // want "pointer to zero-sized type"
+type embeddedPointer struct {
+	empt             // want "\\(zl:emb\\)"
+	t     empt       // want "field \"t\" points to zero-sized type"
+	u, v  empt       // want "fields \"u\", \"v\" point to zero-sized type"
+	f     func(empt) // want "function has pointer parameter to zero-sized type"
+}
+
+func (typedError[_]) Error() string { // want "\\(zl:err\\)"
 	return "an error"
 }
 
 var (
-	_      error = typedError[any]{}         // want "address of zero-size variable"
-	ErrOne       = (typedError[int]{})       // want "address of zero-size variable"
-	ErrTwo       = typedError[float64]{} // want "new called on zero-sized type"
+	_      error = typedError[any]{}         // want "\\(zl:add\\)"
+	ErrOne       = (typedError[int]{})       // want "\\(zl:add\\)"
+	ErrTwo       = typedError[float64]{} // want "\\(zl:new\\)"
 )

@@ -16,8 +16,14 @@
 
 package a
 
-type candidate[T any] struct{ _ T } //zerolint:exclude
+import (
+	"runtime"
+
+	"go.test/a/e"
+)
 
 func Excluded() {
-	_ = &candidate[[0]string]{}
+	var _ *runtime.Func
+
+	var _ *e.Excluded
 }

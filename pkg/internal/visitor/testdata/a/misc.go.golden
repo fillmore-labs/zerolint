@@ -32,37 +32,39 @@ type A [0]string
 
 type B = A
 
-var _ = B{} == A{} // want "comparison of pointers to zero-size variables" "address of zero-size variable" "address of zero-size variable"
+var _ = B{} == A{} // want "\\(zl:cmp\\)" "\\(zl:add\\)" "\\(zl:add\\)"
 
-func (B) Combine(_ B) B { // want "pointer to zero-sized type" "pointer to zero-sized type" "pointer to zero-sized type"
-	return B{} // want "address of zero-size variable"
+func (B) Combine(_ B) B { // want "\\(zl:rcv\\)" "\\(zl:par\\)" "\\(zl:res\\)"
+	return B{} // want "\\(zl:add\\)"
 }
+
+func (B) NoLock() {} // want "\\(zl:rcv\\)"
 
 func Ptr[T any](v T) *T { return &v }
 
 type greeter [5][5]struct{}
 
-type greeterAlias = greeter // want "pointer to zero-sized type"
+type greeterAlias = greeter // want "\\(zl:dcl\\)"
 
-func (g greeterAlias) String() string {
+func (g greeterAlias) String() string { // want "\\(zl:rcv\\)"
 	return "hello, world"
 }
 
-type generatedAlias = *generated
+var _ fmt.Stringer = greeter{} // want "\\(zl:add\\)"
 
-var _ fmt.Stringer = greeter{} // want "address of zero-size variable"
+var _ fmt.Stringer = greeter{} // want "\\(zl:nil\\)"
 
-var _ fmt.Stringer = greeter{} // want "cast of nil to pointer to zero-size variable"
+var _ fmt.Stringer = greeter{} // want "\\(zl:new\\)"
 
-var _ fmt.Stringer = greeter{} // want "new called on zero-sized type"
+var _ = (greeter).String(greeter{}) // want "\\(zl:mex\\)" "\\(zl:arg\\)"
 
 type greeter2[T any] [5][5][0]T
 
-func (g greeter2[T]) String() string { // want "pointer to zero-sized type"
+func (g greeter2[T]) String() string { // want "\\(zl:rcv\\)"
 	return "hello, world"
 }
 
-var _ fmt.Stringer = greeter2[int]{} // want "address of zero-size variable"
+var _ fmt.Stringer = greeter2[int]{} // want "\\(zl:add\\)"
 
 type C2 struct{}
 
@@ -72,6 +74,8 @@ func (*C2) String() string {
 
 var _ fmt.Stringer = (*C2)(nil)
 
+var _ = (*C2).String(nil)
+
 type D struct{ _ int }
 
 func (*D) String() string {
@@ -79,3 +83,5 @@ func (*D) String() string {
 }
 
 var _ fmt.Stringer = (*D)(nil)
+
+var _ = (*D).String(nil)

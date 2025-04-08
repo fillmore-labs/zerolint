@@ -1,8 +1,0 @@
-{
-  "automerge": true,
-  "automergeType": "branch",
-  "extends": [
-    "config:base",
-    ":disableDependencyDashboard"
-  ]
-}

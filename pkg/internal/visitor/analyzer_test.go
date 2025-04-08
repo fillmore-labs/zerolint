@@ -22,61 +22,62 @@ import (
 	"testing"
 
 	"fillmore-labs.com/zerolint/pkg/internal/excludes"
+	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
-	"fillmore-labs.com/zerolint/pkg/internal/visitor"
+	. "fillmore-labs.com/zerolint/pkg/internal/visitor"
+	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/analysistest"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 )
 
-func TestRun(t *testing.T) {
+func TestAnalyzer(t *testing.T) {
 	t.Parallel()
 
 	dir := analysistest.TestData()
 
-	ex, err := excludes.ReadExcludes(os.DirFS(dir), "excluded.txt")
+	excludedTypeNames, err := excludes.ReadExcludes(os.DirFS(dir), "excluded.txt")
 	if err != nil {
 		t.Fatalf("Can't find excludes file: %v", err)
 	}
 
 	type args struct {
-		excludes set.Set[string]
-		full     bool
-		pattern  string
+		options Options
+		pkg     string
 	}
+
 	tests := []struct {
 		name string
 		args args
 		want string
 	}{
-		{"basic", args{nil, false, "go.test/basic"}, "go.test/basic.myError"},
-		{"full", args{set.New(ex...), true, "go.test/a"}, "[0]string"},
+		{"basic", args{Options{}, "go.test/basic"}, "go.test/basic.myError (value methods)"},
+		{"full", args{Options{Level: level.Full, Excludes: set.New(excludedTypeNames...)}, "go.test/a"}, "[0]string"},
 	}
-
 	for _, tt := range tests {
-		v := visitor.New(visitor.Options{
-			Excludes: tt.args.excludes,
-			Full:     tt.args.full,
-		})
+		v := New(tt.args.options)
 
 		a := &analysis.Analyzer{
 			Name:     "zerolint",
 			Doc:      "...",
 			Run:      v.Run,
-			Requires: []*analysis.Analyzer{inspect.Analyzer},
+			Requires: []*analysis.Analyzer{inspect.Analyzer, excluded.Analyzer},
 		}
+
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			analysistest.RunWithSuggestedFixes(t, dir, a, tt.args.pattern)
+			analysistest.RunWithSuggestedFixes(t, dir, a, tt.args.pkg)
 
-			if !v.HasDetected() {
-				t.Error("Expected detection of zero sized types")
-			}
+			if tt.want != "" {
+				if !v.HasDetected() {
+					t.Error("Expected detection of zero-sized types")
+				}
 
-			zerotypes := slices.Collect(v.AllDetected())
-			if !slices.Contains(zerotypes, tt.want) {
-				t.Errorf("Expected %q to contain %q", zerotypes, tt.want)
+				zerotypes := slices.Collect(v.AllDetected())
+				if !slices.Contains(zerotypes, tt.want) {
+					t.Errorf("Expected %q to contain %q", zerotypes, tt.want)
+				}
 			}
 		})
 	}

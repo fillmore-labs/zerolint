@@ -18,12 +18,8 @@ package a
 
 type m1 struct{}
 
-func (m *m1) f() *m1 { return m } // want "pointer to zero-sized type" "pointer to zero-sized type"
+func (m *m1) f(n *m1) (*m1, *m1) { return m, n } // want "\\(zl:rcv\\)" "\\(zl:par\\)" "\\(zl:res\\)" "\\(zl:res\\)"
 
-var _ = (*m1).f(&m1{}) // want "method expression receiver is pointer to zero-size variable" "pointer to zero-sized type" "address of zero-size variable"
+var _, _ = (*m1).f(&m1{}, &m1{}) // want "\\(zl:mex\\)" "\\(zl:add\\)" "\\(zl:add\\)"
 
-type m2 struct{} //zerolint:exclude
-
-func (m *m2) f() *m2 { return m }
-
-var _ = (*m2).f(nil) // Would be broken by '-fix'.
+var _, _ = (*m1).f(nil, nil) // want "\\(zl:mex\\)" "\\(zl:arg\\)"  "\\(zl:arg\\)"

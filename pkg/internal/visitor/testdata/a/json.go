@@ -39,5 +39,5 @@ func IgnoreJson() {
 	_ = myDecoder2{}.Decode(&empty)
 	_ = (myDecoder3)(nil).Decode(&empty)
 
-	_, _ = json.Marshal(&empty) // want "address of zero-size variable"
+	_, _ = json.Marshal(&empty) // want "\\(zl:add\\)"
 }
