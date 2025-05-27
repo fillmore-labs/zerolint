@@ -18,7 +18,7 @@ package excluded
 
 type excludeFact struct{} //zerolint:exclude // Marker type, [analysis.Fact] must be pointers.
 
-// AFact implements [analysis.Fact].
+// AFact makes excludeFact satisfy the [analysis.Fact] interface such that it can be exported as a fact.
 func (*excludeFact) AFact() {}
 
 var excluded excludeFact //nolint:gochecknoglobals // dummy fact

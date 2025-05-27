@@ -26,8 +26,6 @@ import (
 	"fillmore-labs.com/zerolint/pkg/internal/filter"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/analysis/passes/inspect"
-	"golang.org/x/tools/go/ast/inspector"
 )
 
 // run performs the analysis to identify excluded types.
@@ -37,35 +35,15 @@ import (
 // 3. Types with a "//zerolint:exclude" comment.
 // It exports an [excludeFact] fact for each newly identified excluded type in the current package
 // and returns a [filter.Filter] containing the token.Pos of all excluded type definitions.
-func run(pass *analysis.Pass) (any, error) { //nolint:cyclop
+// In run.go
+
+func run(pass *analysis.Pass) (any, error) {
 	addExclusions(pass)
 
-	in, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	if !ok {
-		return nil, ErrNoInspectorResult
-	}
-
-	for decl := range inspector.All[*ast.GenDecl](in) {
-		if decl.Tok != token.TYPE {
-			continue
-		}
-
-		// Exclude via "//zerolint:exclude" comment.
-		excludeAll := hasExcludeComment(decl.Doc)
-
-		for _, spec := range decl.Specs {
-			if ts, ok := spec.(*ast.TypeSpec); ok {
-				// Exclude cgo-generated types.
-				if strings.HasPrefix(ts.Name.Name, "_Ctype_") {
-					excludeType(pass, ts)
-
-					continue
-				}
-
-				// Exclude via "//zerolint:exclude" comment.
-				if excludeAll || hasExcludeComment(ts.Doc) || hasExcludeComment(ts.Comment) {
-					excludeType(pass, ts)
-				}
+	for _, f := range pass.Files {
+		for _, decl := range f.Decls {
+			if genDecl, ok := decl.(*ast.GenDecl); ok {
+				processGenDecl(pass, genDecl)
 			}
 		}
 	}
@@ -81,6 +59,34 @@ func run(pass *analysis.Pass) (any, error) { //nolint:cyclop
 	return filter.New(excludedTypeDefs), nil
 }
 
+func processGenDecl(pass *analysis.Pass, genDecl *ast.GenDecl) {
+	if genDecl.Tok != token.TYPE {
+		return
+	}
+
+	// Exclude all via "//zerolint:exclude" comment on the type block.
+	excludeAll := hasExcludeComment(genDecl.Doc)
+
+	for _, spec := range genDecl.Specs {
+		ts, ok := spec.(*ast.TypeSpec)
+		if !ok {
+			continue
+		}
+
+		// Exclude cgo-generated types.
+		if strings.HasPrefix(ts.Name.Name, "_Ctype_") {
+			excludeType(pass, ts)
+
+			continue
+		}
+
+		// Exclude via "//zerolint:exclude" comment on the type spec itself or its associated comment.
+		if excludeAll || hasExcludeComment(ts.Doc) || hasExcludeComment(ts.Comment) {
+			excludeType(pass, ts)
+		}
+	}
+}
+
 // hasExcludeComment checks if a comment group contains "zerolint:exclude".
 func hasExcludeComment(comments *ast.CommentGroup) bool {
 	if comments == nil {
@@ -88,17 +94,17 @@ func hasExcludeComment(comments *ast.CommentGroup) bool {
 	}
 
 	for _, comment := range comments.List {
-		i := strings.Index(comment.Text, zerolintMarker)
-		if i < 0 {
+		text := strings.TrimLeft(comment.Text, "/ ")
+		if !strings.HasPrefix(text, zerolintMarker) {
 			continue
 		}
 
-		argsPart := strings.Fields(comment.Text[i+len(zerolintMarker):])
-		if len(argsPart) == 0 {
+		argsText, _, _ := strings.Cut(text[len(zerolintMarker):], " ")
+		if len(argsText) == 0 {
 			continue
 		}
 
-		args := strings.Split(argsPart[0], ",")
+		args := strings.Split(argsText, ",")
 		if slices.Contains(args, "exclude") {
 			return true
 		}
