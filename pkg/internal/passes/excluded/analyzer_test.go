@@ -44,7 +44,10 @@ var TestAnalyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
 	Requires: []*analysis.Analyzer{inspect.Analyzer, Analyzer},
 }
 
-var ErrNoExcludedResult = errors.New("result of excluded.Analyzer missing")
+var (
+	ErrNoInspectorResult = errors.New("testanalyzer: inspector result missing")
+	ErrNoExcludedResult  = errors.New("testanalyzer: result of excluded.Analyzer missing")
+)
 
 func run(pass *analysis.Pass) (any, error) {
 	in, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)

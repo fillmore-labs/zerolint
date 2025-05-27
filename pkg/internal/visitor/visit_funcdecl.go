@@ -72,7 +72,7 @@ func (v *Visitor) visitFuncRecv(n *ast.FuncDecl) {
 	case v.level.Below(level.Extended):
 		return
 
-	case v.isLock(n):
+	case isLock(n, elem):
 		// Lock/Unlock methods on zero-sized types (typedef struct noCopy{}), are common
 		// to create an embeddable marker that structures should not be copied.
 		// Therefore, don't suggest removing the star from the receiver.
@@ -107,18 +107,31 @@ func (v *Visitor) isError(n *ast.FuncDecl) bool {
 	return types.Identical(fn.Type(), errorFunc.Type())
 }
 
-// isLock determines if the function declaration n is a Lock or Unlock method
-// with no parameters and no return values, a common signature for locking mechanisms.
-func (v *Visitor) isLock(n *ast.FuncDecl) bool {
-	if len(n.Type.Params.List) != 0 || n.Type.Results != nil && len(n.Type.Results.List) != 0 {
-		return false
+// isLock determines if the function declaration represents a Lock or Unlock
+// method on a pointer receiver to a struct type. This pattern is often used with
+// a zero-sized `noCopy` struct for embedding, and the receiver type is a pointer to that struct.
+func isLock(n *ast.FuncDecl, elem types.Type) bool {
+	if hasParams(n.Type) || hasResults(n.Type) {
+		return false // A method with parameters or results is not a standard Lock/Unlock.
 	}
 
 	switch n.Name.Name {
 	case "Lock", "Unlock":
-		return true
+		_, structPtrReceiver := elem.Underlying().(*types.Struct)
+
+		return structPtrReceiver // Only valid on struct types.
 
 	default:
 		return false
 	}
+}
+
+// hasParams checks if the given function type has any parameters.
+func hasParams(f *ast.FuncType) bool {
+	return len(f.Params.List) != 0
+}
+
+// hasResults checks if the given function type has any results.
+func hasResults(f *ast.FuncType) bool {
+	return f.Results != nil && len(f.Results.List) != 0
 }

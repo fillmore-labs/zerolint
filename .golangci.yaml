@@ -31,7 +31,7 @@ linters:
           strict: true
         printf:
           funcs:
-            - fillmore-labs.com/zerolint/pkg/internal/visitor.newMessageCategorized
+            - fillmore-labs.com/zerolint/pkg/internal/visitor.msgFormatf
     testifylint:
       enable-all: true
       disable:

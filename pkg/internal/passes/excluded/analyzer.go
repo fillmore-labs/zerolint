@@ -17,16 +17,11 @@
 package excluded
 
 import (
-	"errors"
 	"reflect"
 
 	"fillmore-labs.com/zerolint/pkg/internal/filter"
 	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/analysis/passes/inspect"
 )
-
-// ErrNoInspectorResult is returned when the ast inspetor is missing.
-var ErrNoInspectorResult = errors.New("excluded: inspector result missing")
 
 // zerolintMarker is the prefix for zerolint directives in comments ("zerolint:exclude").
 const zerolintMarker = "zerolint:"
@@ -34,12 +29,12 @@ const zerolintMarker = "zerolint:"
 // Analyzer provides information about which types should be excluded from further analysis
 // by other passes in the zerolint toolchain.
 var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
-	Name: "excluded",
-	Doc:  "determine type exclusions for later passes",
-	URL:  "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/internal/passes/excluded",
-	Run:  run,
+	Name:             "excluded",
+	Doc:              "determine type exclusions for later passes",
+	URL:              "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/internal/passes/excluded",
+	Run:              run,
+	RunDespiteErrors: true,
 
-	Requires:   []*analysis.Analyzer{inspect.Analyzer},
 	FactTypes:  []analysis.Fact{(*excludeFact)(nil)},
 	ResultType: reflect.TypeFor[filter.Filter](),
 }
