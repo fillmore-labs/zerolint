@@ -21,8 +21,9 @@ import (
 	"io/fs"
 	"testing"
 
-	. "fillmore-labs.com/zerolint/pkg/zerolint"
 	"golang.org/x/tools/go/analysis/analysistest"
+
+	. "fillmore-labs.com/zerolint/pkg/zerolint"
 )
 
 type ignoreTestErrors struct{}
@@ -40,7 +41,7 @@ func TestAnalyzerWithExcludedFlag(t *testing.T) {
 	}
 
 	dir := analysistest.TestData()
-	result := analysistest.Run(ignoreTestErrors{}, dir, a, "go.test/none")
+	result := analysistest.Run(ignoreTestErrors{}, dir, a, "test/none")
 
 	if len(result) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(result))

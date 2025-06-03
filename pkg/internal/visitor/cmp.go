@@ -49,7 +49,8 @@ func (v *Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 
 	switch {
 	case left.zeroSizedPointer && right.zeroSizedPointer:
-		cM = comparisonMessage(left.infoType, right.infoType, left.valueMethod || right.valueMethod)
+		cM = comparisonMessage(left.infoType, right.infoType,
+			left.valueMethod || right.valueMethod)
 
 	case left.zeroSizedPointer:
 		cM = comparisonMessagePointerInterface(left.infoType, right.infoType, left.valueMethod)
@@ -78,8 +79,11 @@ func (v *Visitor) operandInfo(x ast.Expr) (operandInfo, bool) {
 	t := tv.Type.Underlying()
 
 	if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
-		return operandInfo{zeroSizedPointer: true, valueMethod: valueMethod, infoType: elem},
-			true // comparisons with a pointer to zero-size vriable
+		return operandInfo{
+			zeroSizedPointer: true,
+			valueMethod:      valueMethod,
+			infoType:         elem,
+		}, true // comparisons with a pointer to zero-size vriable
 	}
 
 	if _, ok := t.(*types.Interface); ok {
@@ -94,16 +98,20 @@ func comparisonMessage(left, right types.Type, valueMethod bool) checker.Categor
 	leftTypeString := types.TypeString(left, nil)
 	rightTypeString := types.TypeString(right, nil)
 
+	cat := catComparison
+
 	if leftTypeString == rightTypeString { // types.Identical ignores aliases
-		return msgFormatf(catComparison, valueMethod, "comparison of pointers to zero-size type %q", leftTypeString)
+		return msgFormatf(cat, valueMethod, "comparison of pointers to zero-size type %q", leftTypeString)
 	}
 
-	return msgFormatf(catComparison, valueMethod,
+	return msgFormatf(cat, valueMethod,
 		"comparison of pointers to zero-size types %q and %q", leftTypeString, rightTypeString)
 }
 
 // comparisonMessagePointerInterface generates a diagnostic message for pointer-to-interface comparison.
-func comparisonMessagePointerInterface(elemOp, interfaceOp types.Type, valueMethod bool) checker.CategorizedMessage {
+func comparisonMessagePointerInterface(
+	elemOp, interfaceOp types.Type, valueMethod bool,
+) checker.CategorizedMessage {
 	elemTypeString := types.TypeString(elemOp, nil)
 	interfaceTypeString := types.TypeString(interfaceOp, nil)
 

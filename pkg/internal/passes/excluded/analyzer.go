@@ -19,8 +19,9 @@ package excluded
 import (
 	"reflect"
 
-	"fillmore-labs.com/zerolint/pkg/internal/filter"
 	"golang.org/x/tools/go/analysis"
+
+	"fillmore-labs.com/zerolint/pkg/internal/filter"
 )
 
 // zerolintMarker is the prefix for zerolint directives in comments ("zerolint:exclude").

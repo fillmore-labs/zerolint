@@ -17,11 +17,10 @@
 package zerolint
 
 import (
-	"log"
-
-	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
+
+	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
 )
 
 // Documentation constants.
@@ -40,22 +39,26 @@ Pointers to zero-size types (ZSTs) can be problematic:
 This analyzer helps identify such patterns to encourage using ZSTs by value or
 finding alternative designs and promotes clearer, more efficient, and
 spec-compliant Go code.`
+	URL = "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/zerolint"
 )
 
 // New creates and returns a new [analysis.Analyzer] to detect pointers to zero-length types.
 func New(opts ...Option) *analysis.Analyzer {
-	o := options{
-		logger: log.Default(),
-	}
-	Options(opts).apply(&o)
+	o := makeOptions(opts)
 
-	a := &analysis.Analyzer{
-		Name:     Name,
-		Doc:      Doc,
-		URL:      "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/zerolint",
-		Requires: []*analysis.Analyzer{inspect.Analyzer, excluded.Analyzer},
+	requires := []*analysis.Analyzer{inspect.Analyzer, excluded.Analyzer}
+	if !o.excludeComments {
+		requires = []*analysis.Analyzer{inspect.Analyzer}
 	}
-	a.Run = o.run(&a.Flags)
 
-	return a
+	return &analysis.Analyzer{
+		Name: Name,
+		Doc:  Doc,
+		URL:  URL,
+
+		Flags: o.flags(),
+		Run:   o.run,
+
+		Requires: requires,
+	}
 }

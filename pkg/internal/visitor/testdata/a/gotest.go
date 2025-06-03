@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,19 +16,14 @@
 
 package a
 
-import c "test/a/b"
+import (
+	"testing"
 
-func ReturnsNil() (*int, c.Empty[int]) { // want "\\(zl:res\\)"
-	return nil, c.Empty[int]{} // want "\\(zl:add\\)"
-}
+	"gotest.tools/v3/assert"
+)
 
-func ReturnsNil2() (*int, c.Empty[int]) { // want "\\(zl:res\\)"
-	r := 1
-	return &r, c.Empty[int]{} // want "\\(zl:ret\\)"
-}
+func TestGoTestTools(t *testing.T) {
+	assert.ErrorIs(t, ErrOne, ErrTwo) // want "\\(zl:cmp\\)"
 
-func ReturnsNil3() (c.Empty[int], xError) { // want "\\(zl:res\\)" "\\(zl:res\\+\\)"
-	return func() (c.Empty[int], xError) { // want "\\(zl:res\\)" "\\(zl:res\\+\\)"
-		return c.Empty[int]{}, xError{} // want "\\(zl:ret\\)" "\\(zl:ret\\+\\)"
-	}()
+	assert.Equal(t, ErrOne, ErrOne) // want "\\(zl:cmp\\)"
 }

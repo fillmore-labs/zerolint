@@ -14,30 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package zerolint
+package noexclude
 
-import (
-	"fmt"
-	"os"
-	"runtime/debug"
-)
+type excludedError struct{} //zerolint:exclude
 
-// versionFlag represents a [flag] to print version information and exit the program.
-type versionFlag struct{}
-
-func (versionFlag) IsBoolFlag() bool { return true }
-func (versionFlag) String() string   { return "true" }
-func (versionFlag) Set(_ string) error {
-	const progname = Name
-
-	if bi, ok := debug.ReadBuildInfo(); ok {
-		fmt.Printf("%s version %s build with %s\n",
-			progname, bi.Main.Version, bi.GoVersion)
-	} else {
-		fmt.Printf("%s version (unknown)\n", progname)
-	}
-
-	os.Exit(0)
-
-	return nil
+func (*excludedError) Error() string { // want "\\(zl:err\\)"
+	return "excluded error"
 }

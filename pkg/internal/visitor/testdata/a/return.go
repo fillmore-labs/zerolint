@@ -16,7 +16,7 @@
 
 package a
 
-import c "go.test/a/b"
+import c "test/a/b"
 
 func ReturnsNil() (*int, *c.Empty[int]) { // want "\\(zl:res\\)"
 	return nil, &c.Empty[int]{} // want "\\(zl:add\\)"

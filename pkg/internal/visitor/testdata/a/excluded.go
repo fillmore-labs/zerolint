@@ -19,7 +19,7 @@ package a
 import (
 	"runtime"
 
-	"go.test/a/e"
+	"test/a/e"
 )
 
 func Excluded() {

@@ -14,21 +14,34 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package a
+package main
 
-import c "test/a/b"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime/debug"
+)
 
-func ReturnsNil() (*int, c.Empty[int]) { // want "\\(zl:res\\)"
-	return nil, c.Empty[int]{} // want "\\(zl:add\\)"
-}
+// versionFlag represents a [flag] to print version information and exit the program.
+type versionFlag struct{}
 
-func ReturnsNil2() (*int, c.Empty[int]) { // want "\\(zl:res\\)"
-	r := 1
-	return &r, c.Empty[int]{} // want "\\(zl:ret\\)"
-}
+func (versionFlag) IsBoolFlag() bool { return true }
+func (versionFlag) String() string   { return "true" }
+func (versionFlag) Set(_ string) error {
+	progname, err := os.Executable()
+	if err != nil {
+		return err
+	}
 
-func ReturnsNil3() (c.Empty[int], xError) { // want "\\(zl:res\\)" "\\(zl:res\\+\\)"
-	return func() (c.Empty[int], xError) { // want "\\(zl:res\\)" "\\(zl:res\\+\\)"
-		return c.Empty[int]{}, xError{} // want "\\(zl:ret\\)" "\\(zl:ret\\+\\)"
-	}()
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		fmt.Printf("%s version %s build with %s\n",
+			filepath.Base(progname), bi.Main.Version, bi.GoVersion)
+	} else {
+		fmt.Printf("%s version (unknown)\n", filepath.Base(progname))
+	}
+
+	os.Exit(0)
+
+	return nil
 }

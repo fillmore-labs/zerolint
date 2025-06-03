@@ -21,14 +21,15 @@ import (
 	"slices"
 	"testing"
 
+	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/analysis/analysistest"
+	"golang.org/x/tools/go/analysis/passes/inspect"
+
 	"fillmore-labs.com/zerolint/pkg/internal/excludes"
 	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	. "fillmore-labs.com/zerolint/pkg/internal/visitor"
 	"fillmore-labs.com/zerolint/pkg/zerolint/level"
-	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/analysis/analysistest"
-	"golang.org/x/tools/go/analysis/passes/inspect"
 )
 
 func TestAnalyzer(t *testing.T) {
@@ -51,8 +52,8 @@ func TestAnalyzer(t *testing.T) {
 		args args
 		want string
 	}{
-		{"basic", args{Options{}, "go.test/basic"}, "go.test/basic.myError (value methods)"},
-		{"full", args{Options{Level: level.Full, Excludes: set.New(excludedTypeNames...)}, "go.test/a"}, "[0]string"},
+		{"basic", args{Options{Level: level.Basic}, "test/basic"}, "test/basic.myError (value methods)"},
+		{"full", args{Options{Level: level.Full, Excludes: set.New(excludedTypeNames...)}, "test/a"}, "[0]string"},
 	}
 	for _, tt := range tests {
 		v := New(tt.args.options)

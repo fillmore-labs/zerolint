@@ -23,9 +23,10 @@ import (
 	"slices"
 	"strings"
 
+	"golang.org/x/tools/go/analysis"
+
 	"fillmore-labs.com/zerolint/pkg/internal/filter"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
-	"golang.org/x/tools/go/analysis"
 )
 
 // run performs the analysis to identify excluded types.
@@ -69,7 +70,7 @@ func processGenDecl(pass *analysis.Pass, genDecl *ast.GenDecl) {
 
 	for _, spec := range genDecl.Specs {
 		ts, ok := spec.(*ast.TypeSpec)
-		if !ok {
+		if !ok { // This should not happen.
 			continue
 		}
 

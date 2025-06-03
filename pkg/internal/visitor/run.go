@@ -20,10 +20,11 @@ import (
 	"errors"
 	"go/ast"
 
-	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
 // ErrNoInspectorResult is returned when the ast inspector is missing.
@@ -74,17 +75,26 @@ func nodeFilter(lvl level.LintLevel) []ast.Node {
 
 		fallthrough
 
-	default:
+	case lvl.AtLeast(level.Basic):
 		// Basic analysis at the default level.
+		nodes = append(nodes,
+			// keep-sorted start
+			filter((*Visitor).visitFuncDecl),
+			filter((*Visitor).visitStar),
+			filter((*Visitor).visitStructType),
+			filter((*Visitor).visitTypeSpec),
+			// keep-sorted end
+		)
+
+		fallthrough
+
+	default:
+		// Minimal analysis at the CI level.
 		nodes = append(nodes,
 			// keep-sorted start
 			filter((*Visitor).visitBinary),
 			filter((*Visitor).visitCall),
 			filter((*Visitor).visitFile),
-			filter((*Visitor).visitFuncDecl),
-			filter((*Visitor).visitStar),
-			filter((*Visitor).visitStructType),
-			filter((*Visitor).visitTypeSpec),
 			// keep-sorted end
 		)
 	}
@@ -107,7 +117,7 @@ func filter[N ast.Node](func(*Visitor, N) bool) ast.Node {
 // visit is the central visitor function called by `inspector.Nodes`.
 // It receives AST nodes during traversal and dispatches them to specific
 // `visit*` methods based on the node type for detailed analysis.
-func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) { //nolint:cyclop
+func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) {
 	if !push {
 		return true // Only process nodes when entering
 	}
@@ -120,6 +130,9 @@ func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) { //nolint:cyclop
 		return v.visitCall(n)
 	case *ast.File:
 		return v.visitFile(n)
+	// keep-sorted end
+
+	// keep-sorted start
 	case *ast.FuncDecl:
 		return v.visitFuncDecl(n)
 	case *ast.StarExpr:

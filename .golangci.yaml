@@ -19,9 +19,13 @@ linters:
     - varnamelen
     - wrapcheck
   settings:
+    cyclop:
+      max-complexity: 20
     errcheck:
       exclude-functions:
         - (io/fs.File).Close
+    gocognit:
+      min-complexity: 30
     govet:
       enable-all: true
       disable:
@@ -32,10 +36,6 @@ linters:
         printf:
           funcs:
             - fillmore-labs.com/zerolint/pkg/internal/visitor.msgFormatf
-    testifylint:
-      enable-all: true
-      disable:
-        - require-error
     ireturn:
       allow:
         - anon
@@ -43,6 +43,8 @@ linters:
         - empty
         - stdlib
         - generic
+    mnd:
+      ignored-numbers: ["2", "3", "-1"]
     predeclared:
       ignore: ["new"]
     revive:
@@ -77,6 +79,10 @@ linters:
         - name: unused-parameter
         - name: var-declaration
         - name: var-naming
+    testifylint:
+      enable-all: true
+      disable:
+        - require-error
   exclusions:
     rules:
       - path: _test\.go$

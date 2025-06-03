@@ -21,13 +21,14 @@ import (
 	"go/types"
 	"strings"
 
+	"golang.org/x/tools/go/analysis"
+
 	"fillmore-labs.com/zerolint/pkg/internal/checker"
 	"fillmore-labs.com/zerolint/pkg/zerolint/level"
-	"golang.org/x/tools/go/analysis"
 )
 
 // visitCall checks for type casts T(x), errors.Is(x, y), errors.As(x, y) and new(T).
-func (v *Visitor) visitCall(n *ast.CallExpr) bool { //nolint:cyclop
+func (v *Visitor) visitCall(n *ast.CallExpr) bool {
 	switch funType := v.check.TypesInfo().Types[n.Fun]; {
 	case funType.IsBuiltin(): // Check for calls to new(T).
 		if v.level.Below(level.Extended) {
@@ -95,6 +96,10 @@ func (v *Visitor) visitCallFun(n *ast.CallExpr) bool {
 	case *ast.SelectorExpr:
 		if sel, ok := v.check.TypesInfo().Selections[fun]; ok {
 			// Selection expression
+			if v.level.Below(level.Extended) {
+				return true
+			}
+
 			return v.visitCallSelection(fun, sel)
 		}
 
@@ -120,10 +125,6 @@ func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection
 
 	case types.MethodExpr:
 		// Method used as a function value (e.g., (*T).Method).
-		if v.level.Below(level.Extended) {
-			return true
-		}
-
 		if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(sel.Recv()); zeroSized {
 			cM := msgFormatf(catMethodExpression, valueMethod,
 				"method expression receiver is pointer to zero-size type %q", elem)
@@ -140,7 +141,7 @@ func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection
 
 // visitCallIdent processes encoding/json.Unmarshal (ignored as it requires pointer arguments),
 // errors.Is and errors.As from the standard library or golang.org/x/exp/errors.
-func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolint:cyclop
+func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolint:funlen
 	obj := v.check.TypesInfo().Uses[fun]
 	if obj == nil {
 		return true
@@ -160,8 +161,8 @@ func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolin
 
 		return true
 
-	case "errors", "golang.org/x/exp/errors":
-		if len(n.Args) != 2 { //nolint:mnd
+	case "errors", "golang.org/x/exp/errors", "golang.org/x/xerrors", "github.com/pkg/errors":
+		if len(n.Args) != 2 {
 			return true // We are only interested in comparisons.
 		}
 
@@ -177,19 +178,30 @@ func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolin
 		}
 
 	case "github.com/stretchr/testify/assert", "github.com/stretchr/testify/require":
-		if len(n.Args) < 3 { //nolint:mnd
+		if len(n.Args) < 3 {
 			return true // We are only interested in comparisons.
 		}
 
-		switch name {
+		switch name { // assert.Equal does not compare object identity, but uses [reflect.DeepEqual].
 		case "ErrorAs", "ErrorAsf", "NotErrorAs", "NotErrorAsf":
-			return false // Do not report pointers in ....ErrorAs(t, ..., ...).
+			return false // Do not report pointers in ErrorAs(t, ..., ...).
 
 		case "ErrorIs", "ErrorIsf", "NotErrorIs", "NotErrorIsf":
 			return v.visitCmp(n, n.Args[1], n.Args[2]) // Delegate analysis of ErrorIs(t, ..., ...) to visitCmp.
 
-		case "Equal", "NotEqual":
-			return true // assert.Equal does not compare object identity, but uses [reflect.DeepEqual].
+		default:
+			return true
+		}
+
+	case "gotest.tools/v3/assert":
+		if len(n.Args) < 3 {
+			return true // gotest.tools comparison functions typically take at least t, expected, actual.
+		}
+
+		switch name {
+		case "Equal", "ErrorIs":
+			// Delegate analysis of assert.Equal(t, ..., ...) to visitCmp.
+			return v.visitCmp(n, n.Args[1], n.Args[2])
 
 		default:
 			return true

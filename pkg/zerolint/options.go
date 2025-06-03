@@ -19,6 +19,7 @@ package zerolint
 import (
 	"log"
 	"regexp"
+	"sync"
 
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"fillmore-labs.com/zerolint/pkg/internal/visitor"
@@ -28,9 +29,32 @@ import (
 // options defines configurable parameters for the linter.
 type options struct {
 	visitor.Options
-	logger    *log.Logger
-	zeroTrace bool
-	flags     bool
+	logger          *log.Logger
+	zeroTrace       bool
+	withFlags       bool
+	excludeComments bool
+	excludedFile    string
+	excludeRead     sync.Once
+	excludeReadErr  error
+}
+
+// defaultOptions returns a [options] struct initialized with default values.
+func defaultOptions() *options {
+	return &options{ // Default options
+		Options: visitor.Options{
+			Level: level.Basic,
+		},
+		logger:          log.Default(),
+		excludeComments: true,
+	}
+}
+
+// makeOptions returns a [options] struct with overriding [Option]s applied.
+func makeOptions(opts Options) *options {
+	o := defaultOptions()
+	opts.apply(o)
+
+	return o
 }
 
 // Option configures specific behavior of the zerolint [analysis.Analyzer].
@@ -131,10 +155,22 @@ func (o loggerOption) apply(opts *options) {
 	opts.logger = o.logger
 }
 
+// WithExcludeComments is an [Option] to configure parsing of `zerolint:exclude` comments.
+func WithExcludeComments(excludeComments bool) Option { //nolint:ireturn
+	return excludeCommentsOption{excludeComments: excludeComments}
+}
+
+type excludeCommentsOption struct {
+	excludeComments bool
+}
+
+func (o excludeCommentsOption) apply(opts *options) {
+	opts.excludeComments = o.excludeComments
+}
+
 // WithFlags is an [Option] to configure parsing of command-line flags.
 // When enabled, command-line flags (e.g., -level, -excluded) will be parsed
 // and will override any corresponding options set programmatically via other `With...` functions.
-// If the "-V" flag is specified on the command line, it prints the program version and exits.
 func WithFlags(flags bool) Option { //nolint:ireturn
 	return flagsOption{flags: flags}
 }
@@ -144,5 +180,5 @@ type flagsOption struct {
 }
 
 func (o flagsOption) apply(opts *options) {
-	opts.flags = o.flags
+	opts.withFlags = o.flags
 }

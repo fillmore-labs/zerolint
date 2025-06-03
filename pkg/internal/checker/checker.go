@@ -22,11 +22,12 @@ import (
 	"go/types"
 	"regexp"
 
+	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/types/typeutil"
+
 	"fillmore-labs.com/zerolint/pkg/internal/filter"
 	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
-	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/types/typeutil"
 )
 
 // Checker provides helper functions for analyzing and reporting pointers to zero-sized types.

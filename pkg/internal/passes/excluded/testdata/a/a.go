@@ -16,7 +16,7 @@
 
 package a
 
-import "go.test/a/b"
+import "test/a/b"
 
 var (
 	_ b.Excluded1    // want "IS excluded"
