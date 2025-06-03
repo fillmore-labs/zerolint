@@ -4,7 +4,6 @@
 [![Test](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yml)
 [![CodeQL](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql)
 [![Coverage](https://codecov.io/gh/fillmore-labs/zerolint/branch/main/graph/badge.svg?token=TUE1BL1QZV)](https://codecov.io/gh/fillmore-labs/zerolint)
-[![Maintainability](https://api.codeclimate.com/v1/badges/baf50ad423cc30ff7790/maintainability)](https://codeclimate.com/github/fillmore-labs/zerolint/maintainability)
 [![Go Report Card](https://goreportcard.com/badge/fillmore-labs.com/zerolint)](https://goreportcard.com/report/fillmore-labs.com/zerolint)
 [![License](https://img.shields.io/github/license/fillmore-labs/zerolint)](https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -25,11 +24,31 @@ themselves are not zero-sized, leading to minor memory and performance overhead.
 
 ## Quickstart
 
+### Installation
+
 Install the linter:
+
+### Homebrew
+
+```console
+brew install fillmore-labs/tap/zerolint
+```
+
+### Go
 
 ```console
 go install fillmore-labs.com/zerolint@latest
 ```
+
+### Eget
+
+[Install `eget`](https://github.com/zyedidia/eget?tab=readme-ov-file#how-to-get-eget), then
+
+```console
+eget fillmore-labs/zerolint
+```
+
+## Usage
 
 Run the linter on your project:
 
@@ -46,7 +65,7 @@ Usage: `zerolint [-flag] [package]`
 Flags:
 
 - **-level** `<level>`: Set analysis depth:
-  - **Default**: Basic detection of pointer issues
+  - **Basic**: Basic detection of pointer issues (Default)
   - **Extended**: Additional checks for more complex patterns
   - **Full**: Most comprehensive analysis, recommended with `-fix`
 - **-match** `<regex>`: Limit zero-sized type detection to types matching the regex. Useful with `-fix`.
@@ -67,7 +86,6 @@ Flags:
 Consider the following Go code:
 
 ```go
-// main_test.go
 package main
 
 import (
@@ -98,11 +116,19 @@ func TestDivisionByZero(t *testing.T) {
 }
 ```
 
-Running `zerolint ./...` would produce output similar to:
+The test passes ([Go Playground](https://go.dev/play/p/7Zyi1SsiSqI)):
+
+```console
+=== RUN   TestDivisionByZero
+--- PASS: TestDivisionByZero (0.00s)
+PASS
+```
+
+Running `zerolint .` would produce output similar to:
 
 ```text
-/path/to/your/project/main_test.go:11:7: error interface implemented on pointer to zero-sized type "example.com/project.DivisionByZeroError" (zl:err)
-/path/to/your/project/main_test.go:26:6: comparison of pointer to zero-size type "example.com/project.DivisionByZeroError" with error interface (zl:cme)
+/path/to/your/project/main_test.go:10:7: error interface implemented on pointer to zero-sized type "example.com/project.DivisionByZeroError" (zl:err)
+/path/to/your/project/main_test.go:25:6: comparison of pointer to zero-size type "example.com/project.DivisionByZeroError" with error interface (zl:cme)
 ```
 
 ### Understanding the Output and Zero-Sized Diagnostics
@@ -135,7 +161,7 @@ instances based on their pointer values.
 #### Pitfalls of Zero-Sized Pointer Comparisons
 
 Internally, Go's runtime optimizes allocations of zero-sized types. It achieves this by
-[returning a pointer to a common static variable](https://cs.opensource.google/go/go/+/refs/tags/go1.24.3:src/runtime/malloc.go;l=1017-1020)
+[returning a pointer to a common static variable](https://cs.opensource.google/go/go/+/refs/tags/go1.24.4:src/runtime/malloc.go;l=1017-1020)
 (known as `runtime.zerobase`) rather than allocating new memory on the heap for each instance. A consequence of this
 optimization is that different pointers to zero-sized types (e.g., multiple uses of `&DivisionByZeroError{}` or
 `new(DivisionByZeroError)`) end up pointing to the same memory address. This can create the illusion that such pointers
@@ -192,10 +218,9 @@ related to a specific zero-sized type, promoting consistency across its usages o
 > **Caution:** Always review changes made by `-fix` carefully before committing them, as automatic refactoring can
 > sometimes have unintended consequences, especially in complex codebases.
 
-For instance, running `zerolint -level=full -fix ./...` on the example above transforms the code as follows:
+For instance, running `zerolint -level=full -fix .` on the example above transforms the code as follows:
 
 ```go
-// main_test.go
 package main
 
 import (
@@ -253,8 +278,8 @@ pointer-based zero-sized errors is generally preferable.
 #### Exclude the Type from Analysis
 
 If pointer usage for a specific zero-sized type is intentional, unavoidable (e.g., due to external library constraints),
-or you've assessed the risk and accept it, you can exclude the type from `zerolint`'s analysis. See the
-next section [“Excluding Types”](#excluding-types) for details.
+or you've assessed the risk and accept it, you can exclude the type from `zerolint`'s analysis. See the next section
+[“Excluding Types”](#excluding-types) for details.
 
 ## Excluding Types
 
@@ -327,11 +352,11 @@ selectively bypassing checks for specific external types where pointer usage is 
 diagnostic code, `zst` is used as a placeholder for a zero-sized type definition (e.g., `type zst struct{}`), and `zsv`
 represents a variable of that zero-sized type (e.g., `var zsv zst`).
 
-### Default Level
+### Basic Level
 
 - **zl:cme**: Comparison of pointer to zero-size type with an error interface (`errors.Is(err, &zsv)`)
-- **zl:cmp**: Comparison of pointers to zero-size type (`&zst{} == &zst{}`)
-- **zl:cmi**: Comparison of pointer to zero-size type with interface (`&zsv == any(nil)`)
+- **zl:cmp**: Comparison of pointers to zero-size type (`&zsv == &zsv`)
+- **zl:cmi**: Comparison of pointer to zero-size type with interface (`&zsv == any(&zst{})`)
 - **zl:err**: Error interface implemented on pointer to zero-sized type (`func (*zst) Error() string`)
 - **zl:emb**: Embedded pointer to zero-sized type (`struct{ *zst }`)
 - **zl:der**: Dereferencing pointer to zero-size variable (`zsp := &zsv; _ = *zsp`)

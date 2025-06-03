@@ -1,3 +1,3 @@
-module go.test
+module test
 
 go 1.23.0

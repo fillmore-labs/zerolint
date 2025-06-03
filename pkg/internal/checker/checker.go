@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,70 +17,35 @@
 package checker
 
 import (
-	"go/ast"
-	"go/token"
-	"go/types"
 	"regexp"
 
-	"fillmore-labs.com/zerolint/pkg/internal/filter"
-	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
-	"fillmore-labs.com/zerolint/pkg/internal/set"
-	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
+
+	"fillmore-labs.com/zerolint/pkg/internal/filter"
+	"fillmore-labs.com/zerolint/pkg/internal/set"
 )
 
-// Checker provides helper functions for analyzing and reporting pointers to zero-sized types.
+// Checker provides helper functions for analyzing pointers to zero-sized types.
 type Checker struct {
-	pass               *analysis.Pass
-	Excludes, Detected set.Set[string]
-
-	// Filter for zero-sized checks, used in [Checker.ZeroSizedType].
-	Regex *regexp.Regexp
-
-	// Tracks StarExpr positions that have already been processed to avoid duplicate diagnostics or fixes.
-	seenStars set.Set[token.Pos]
-
 	// Cached results of zero-sized checks, used by [Checker.ZeroSizedType] to optimize repeated lookups.
 	cache typeutil.Map
 
-	// Imports of the currently processed file, used by [Checker.Qualifier].
-	CurrentImports []*ast.ImportSpec
-
 	// Type definitions excluded via `//nolint:zerolint` directives.
 	ExcludedTypeDefs filter.Filter
-}
 
-// New creates and initializes a [Checker] instance using the provided [analysis.Pass].
-func New(pass *analysis.Pass) *Checker {
-	c := &Checker{}
-	c.Prepare(pass)
+	Excludes set.Set[string]
 
-	return c
+	Detected map[string]bool
+
+	// Filter for zero-sized checks, used in [Checker.ZeroSizedType].
+	Regex *regexp.Regexp
 }
 
 // Prepare initializes the [Checker] with the provided [analysis.Pass], preparing for new analysis.
-func (c *Checker) Prepare(pass *analysis.Pass) {
-	c.pass = pass
-
+func (c *Checker) Prepare() {
 	if c.Excludes == nil {
 		c.Excludes = set.New[string]()
 	}
 
-	c.Detected = set.New[string]()
-	c.seenStars = set.New[token.Pos]()
-
-	if excludedTypeDefs, ok := pass.ResultOf[excluded.Analyzer].(filter.Filter); ok {
-		c.ExcludedTypeDefs = excludedTypeDefs
-	}
-}
-
-// TypesInfo returns the type information for the current analysis pass.
-func (c *Checker) TypesInfo() *types.Info {
-	return c.pass.TypesInfo
-}
-
-// Print outputs the syntax tree representation of the given AST node `n` to standard output.
-// This can be useful for debugging purposes.
-func (c *Checker) Print(n any) error {
-	return ast.Print(c.pass.Fset, n)
+	c.Detected = make(map[string]bool)
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,6 @@ package basic
 
 type generated struct{}
 
-func (*generated) Error() string { // want "\\(zl:err\\)"
+func (*generated) Error() string { // want " \\(zl:err\\)$"
 	return "an error"
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,11 +26,11 @@ import (
 type LintLevel int //nolint:recvcheck
 
 const (
-	// Default is the standard linting level that applies basic checks to the code.
+	// Basic is the standard linting level that applies basic checks to the code.
 	// It primarily flags comparisons of pointers to zero-size types
 	// and embedding pointers in structures.
 	// It is the default level used when no specific linting level is specified.
-	Default LintLevel = iota
+	Basic LintLevel = iota + 1
 
 	// Extended finds more usages of pointers to zero-sized types.
 	// This includes variables, struct fields and method receivers that are
@@ -50,7 +50,7 @@ const (
 var ErrUnknownLintLevel = errors.New("unknown lint level")
 
 const (
-	levelDefault  = "default"
+	levelBasic    = "basic"
 	levelExtended = "extended"
 	levelFull     = "full"
 )
@@ -58,13 +58,13 @@ const (
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (l *LintLevel) UnmarshalText(text []byte) error {
 	switch strings.ToLower(string(text)) {
-	case levelDefault, "0":
-		*l = Default
+	case levelBasic, "1":
+		*l = Basic
 
-	case levelExtended, "1":
+	case levelExtended, "2":
 		*l = Extended
 
-	case levelFull, "2":
+	case levelFull, "3":
 		*l = Full
 
 	default:
@@ -77,8 +77,8 @@ func (l *LintLevel) UnmarshalText(text []byte) error {
 // MarshalText implements encoding.TextMarshaler.
 func (l LintLevel) MarshalText() ([]byte, error) {
 	switch l {
-	case Default:
-		return []byte(levelDefault), nil
+	case Basic:
+		return []byte(levelBasic), nil
 
 	case Extended:
 		return []byte(levelExtended), nil
@@ -105,8 +105,8 @@ func (l LintLevel) Below(m LintLevel) bool {
 // it returns their numeric value.
 func (l LintLevel) String() string {
 	switch l {
-	case Default:
-		return levelDefault
+	case Basic:
+		return levelBasic
 
 	case Extended:
 		return levelExtended

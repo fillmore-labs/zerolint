@@ -1,7 +1,8 @@
 ---
+# yaml-language-server: $schema=https://json.schemastore.org/pre-commit-config.json
 repos:
   - repo: https://github.com/google/yamlfmt
-    rev: v0.17.0
+    rev: v0.17.2
     hooks:
       - id: yamlfmt
   - repo: https://github.com/google/keep-sorted
@@ -13,6 +14,6 @@ repos:
     hooks:
       - id: markdownlint-cli2
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.1.6
+    rev: v2.2.1
     hooks:
       - id: golangci-lint

@@ -1,13 +1,10 @@
 .*
 !/.buildkite/
-!/.codeclimate.yml
 !/.custom-gcl.yaml
-!/.envrc
 !/.gitattributes
 !/.github/
 !/.gitignore
 !/.golangci.yaml
-!/.goreleaser.yaml
 !/.markdownlint.yaml
 !/.mockery.yaml
 !/.pre-commit-config.yaml

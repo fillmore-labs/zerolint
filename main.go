@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,16 @@
 package main
 
 import (
-	"fillmore-labs.com/zerolint/pkg/zerolint"
 	"golang.org/x/tools/go/analysis/singlechecker"
+
+	"fillmore-labs.com/zerolint/pkg/zerolint"
 )
 
 func main() {
 	a := zerolint.New(zerolint.WithFlags(true))
+	if a.Flags.Lookup("V") == nil {
+		a.Flags.Var(versionFlag{}, "V", "print version and exit")
+	}
 
 	singlechecker.Main(a)
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,9 @@ import (
 	"io/fs"
 	"testing"
 
-	. "fillmore-labs.com/zerolint/pkg/zerolint"
 	"golang.org/x/tools/go/analysis/analysistest"
+
+	. "fillmore-labs.com/zerolint/pkg/zerolint"
 )
 
 type ignoreTestErrors struct{}
@@ -40,7 +41,7 @@ func TestAnalyzerWithExcludedFlag(t *testing.T) {
 	}
 
 	dir := analysistest.TestData()
-	result := analysistest.Run(ignoreTestErrors{}, dir, a, "go.test/none")
+	result := analysistest.Run(ignoreTestErrors{}, dir, a, "test/none")
 
 	if len(result) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(result))
