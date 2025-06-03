@@ -1,3 +1,0 @@
-# zerolint exclusions for go.test/a
-go.test/a.C2
-go.test/a.GA[go.test/a.Ety]

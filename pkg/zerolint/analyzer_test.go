@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,10 +24,11 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/tools/go/analysis/analysistest"
+
 	"fillmore-labs.com/zerolint/pkg/internal/excludes"
 	. "fillmore-labs.com/zerolint/pkg/zerolint"
 	"fillmore-labs.com/zerolint/pkg/zerolint/level"
-	"golang.org/x/tools/go/analysis/analysistest"
 )
 
 func TestAnalyzer(t *testing.T) { //nolint:funlen
@@ -50,14 +51,15 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 		{
 			name: "basic with zerotrace",
 			options: Options{
-				WithLevel(level.Default),
+				WithLevel(level.Basic),
 				WithExcludes(excludedTypeNames),
 				WithZeroTrace(true),
 				WithGenerated(true),
-				WithRegex(regexp.MustCompile(`^go\.test/`)),
+				WithExcludeComments(true),
+				WithRegex(regexp.MustCompile(`^test/`)),
 			},
-			want: []string{"go.test/basic.aliasError", "go.test/basic.myError"},
-			pkg:  "go.test/basic",
+			want: []string{"test/basic.aliasError", "test/basic.myError"},
+			pkg:  "test/basic",
 		},
 		{
 			name: "basic with zerotrace via flags",
@@ -65,14 +67,24 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 				WithFlags(true),
 			},
 			flags: map[string]string{
-				"level":     "default",
+				"level":     "basic",
 				"excluded":  dir + "/excluded.txt",
 				"zerotrace": "true",
 				"generated": "true",
-				"match":     `^go\.test/`,
+				"match":     `^test/`,
 			},
-			want: []string{"go.test/basic.aliasError", "go.test/basic.myError"},
-			pkg:  "go.test/basic",
+			want: []string{"test/basic.aliasError", "test/basic.myError"},
+			pkg:  "test/basic",
+		},
+		{
+			name: "no exclusions",
+			options: Options{
+				WithLevel(level.Full),
+				WithZeroTrace(true),
+				WithExcludeComments(false),
+			},
+			want: []string{"test/noexclude.excludedError"},
+			pkg:  "test/noexclude",
 		},
 	}
 	for _, tt := range tests {

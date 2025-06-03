@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,19 +33,19 @@ func TestLintLevel_UnmarshalText(t *testing.T) { //nolint:funlen
 		wantErr   error
 	}{
 		{
-			name:      "default lowercase",
-			text:      []byte("default"),
-			wantLevel: Default,
+			name:      "basic lowercase",
+			text:      []byte("basic"),
+			wantLevel: Basic,
 		},
 		{
-			name:      "default uppercase",
-			text:      []byte("DEFAULT"),
-			wantLevel: Default,
+			name:      "basic uppercase",
+			text:      []byte("BASIC"),
+			wantLevel: Basic,
 		},
 		{
-			name:      "default numeric",
-			text:      []byte("0"),
-			wantLevel: Default,
+			name:      "basic numeric",
+			text:      []byte("1"),
+			wantLevel: Basic,
 		},
 		{
 			name:      "extended lowercase",
@@ -59,7 +59,7 @@ func TestLintLevel_UnmarshalText(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:      "extended numeric",
-			text:      []byte("1"),
+			text:      []byte("2"),
 			wantLevel: Extended,
 		},
 		{
@@ -74,7 +74,7 @@ func TestLintLevel_UnmarshalText(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:      "full numeric",
-			text:      []byte("2"),
+			text:      []byte("3"),
 			wantLevel: Full,
 		},
 		{
@@ -84,7 +84,7 @@ func TestLintLevel_UnmarshalText(t *testing.T) { //nolint:funlen
 		},
 		{
 			name:    "unknown numeric",
-			text:    []byte("3"),
+			text:    []byte("4"),
 			wantErr: ErrUnknownLintLevel,
 		},
 		{
@@ -102,11 +102,11 @@ func TestLintLevel_UnmarshalText(t *testing.T) { //nolint:funlen
 
 			err := l.UnmarshalText(tt.text)
 			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("UnmarshalText() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("UnmarshalText(%s) error = %v, wantErr %v", string(tt.text), err, tt.wantErr)
 			}
 
 			if err == nil && l != tt.wantLevel {
-				t.Errorf("UnmarshalText() level = %v, wantLevel %v", l, tt.wantLevel)
+				t.Errorf("UnmarshalText(%s) level = %v, wantLevel %v", string(tt.text), l, tt.wantLevel)
 			}
 		})
 	}
@@ -121,7 +121,7 @@ func TestLintLevel_MarshalText(t *testing.T) {
 		want    []byte
 		wantErr error
 	}{
-		{"Default", Default, []byte("default"), nil},
+		{"Basic", Basic, []byte("basic"), nil},
 		{"Extended", Extended, []byte("extended"), nil},
 		{"Full", Full, []byte("full"), nil},
 		{"Unknown", LintLevel(99), nil, ErrUnknownLintLevel},
@@ -154,9 +154,9 @@ func TestLintLevel_AtLeast(t *testing.T) {
 		m    LintLevel
 		want bool
 	}{
-		{"Default at least Default", Default, Default, true},
-		{"Default at least Extended", Default, Extended, false},
-		{"Extended at least Default", Extended, Default, true},
+		{"Basic at least Basic", Basic, Basic, true},
+		{"Basic at least Extended", Basic, Extended, false},
+		{"Extended at least Basic", Extended, Basic, true},
 		{"Full at least Extended", Full, Extended, true},
 	}
 
@@ -180,9 +180,9 @@ func TestLintLevel_Below(t *testing.T) {
 		m    LintLevel
 		want bool
 	}{
-		{"Default below Default", Default, Default, false},
-		{"Default below Extended", Default, Extended, true},
-		{"Extended below Default", Extended, Default, false},
+		{"Basic below Basic", Basic, Basic, false},
+		{"Basic below Extended", Basic, Extended, true},
+		{"Extended below Basic", Extended, Basic, false},
 		{"Full below Extended", Full, Extended, false},
 	}
 
@@ -205,7 +205,7 @@ func TestLintLevel_String(t *testing.T) {
 		level LintLevel
 		want  string
 	}{
-		{"Default", Default, "default"},
+		{"Basic", Basic, "basic"},
 		{"Extended", Extended, "extended"},
 		{"Full", Full, "full"},
 		{"Unknown", LintLevel(42), "42"},

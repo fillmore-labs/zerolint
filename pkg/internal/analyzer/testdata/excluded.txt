@@ -1,0 +1,3 @@
+# zerolint exclusions for test/a
+test/a.C2
+test/a.GA[test/a.Ety]

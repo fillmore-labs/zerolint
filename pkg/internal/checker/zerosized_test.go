@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,10 @@
 package checker_test
 
 import (
+	"go/token"
 	"go/types"
+	"maps"
+	"slices"
 	"testing"
 
 	. "fillmore-labs.com/zerolint/pkg/internal/checker"
@@ -65,7 +68,7 @@ type ZSWithNonEmbeddedNonZero struct { F NonEmptyStruct }
 
 type ExcludableEmptyStruct struct{}
 `
-	info, pkg, fset, astFile := parseSource(t, "test.go", src)
+	pkg := parseSource(t, "test.go", src)
 
 	tests := []struct {
 		name             string
@@ -97,9 +100,9 @@ type ExcludableEmptyStruct struct{}
 		{name: "AliasToNonEmptyStruct", getTypeFn: func() types.Type { return getType(t, pkg, "AliasToNonEmptyStruct") }, wantZeroSized: false},
 		{name: "StructWithMixedFields", getTypeFn: func() types.Type { return getType(t, pkg, "StructWithMixedFields") }, wantZeroSized: false},
 
-		{name: "ZSWithValueReceiver", getTypeFn: func() types.Type { return getType(t, pkg, "ZSWithValueReceiver") }, wantZeroSized: true, wantValueMethod: true, wantDetectedName: "testpkg.ZSWithValueReceiver (value methods)"},
+		{name: "ZSWithValueReceiver", getTypeFn: func() types.Type { return getType(t, pkg, "ZSWithValueReceiver") }, wantZeroSized: true, wantValueMethod: true, wantDetectedName: "testpkg.ZSWithValueReceiver"},
 		{name: "ZSWithPtrReceiverOnly", getTypeFn: func() types.Type { return getType(t, pkg, "ZSWithPtrReceiverOnly") }, wantZeroSized: true, wantValueMethod: false, wantDetectedName: "testpkg.ZSWithPtrReceiverOnly"},
-		{name: "ZSWithEmbeddedValueReceiver", getTypeFn: func() types.Type { return getType(t, pkg, "ZSWithEmbeddedValueReceiver") }, wantZeroSized: true, wantValueMethod: true, wantDetectedName: "testpkg.ZSWithEmbeddedValueReceiver (value methods)"},
+		{name: "ZSWithEmbeddedValueReceiver", getTypeFn: func() types.Type { return getType(t, pkg, "ZSWithEmbeddedValueReceiver") }, wantZeroSized: true, wantValueMethod: true, wantDetectedName: "testpkg.ZSWithEmbeddedValueReceiver"},
 		{name: "ZSWithEmbeddedPtrReceiverOnly", getTypeFn: func() types.Type { return getType(t, pkg, "ZSWithEmbeddedPtrReceiverOnly") }, wantZeroSized: true, wantValueMethod: false, wantDetectedName: "testpkg.ZSWithEmbeddedPtrReceiverOnly"},
 		{name: "ZSWithNonEmbeddedValueReceiver", getTypeFn: func() types.Type { return getType(t, pkg, "ZSWithNonEmbeddedValueReceiver") }, wantZeroSized: true, wantValueMethod: false, wantDetectedName: "testpkg.ZSWithNonEmbeddedValueReceiver"},
 		{name: "ZSWithNonEmbeddedNonZero", getTypeFn: func() types.Type { return getType(t, pkg, "ZSWithNonEmbeddedNonZero") }, wantZeroSized: false},
@@ -126,13 +129,64 @@ type ExcludableEmptyStruct struct{}
 			},
 			wantZeroSized: false,
 		},
+
+		{
+			name: "Recursive",
+			getTypeFn: func() types.Type {
+				// This is not a valid Go type
+				name := types.NewTypeName(token.NoPos, nil, "Recursive", nil)
+				recursive := types.NewNamed(name, nil, nil)
+				recursive.SetUnderlying(types.NewArray(recursive, 1))
+
+				return recursive
+			},
+			wantZeroSized: false,
+		},
+		{
+			name: "Recursive2",
+			getTypeFn: func() types.Type {
+				// This is not a valid Go type
+				name := types.NewTypeName(token.NoPos, nil, "Recursive2", nil)
+				recursive := types.NewNamed(name, nil, nil)
+				recursivefield := types.NewVar(token.NoPos, nil, "_", recursive)
+
+				field := types.NewVar(token.NoPos, nil, "_", types.NewStruct(nil, nil))
+				fields := slices.Repeat([]*types.Var{field}, 1_000)
+				fields = append(fields, recursivefield)
+
+				recursive.SetUnderlying(types.NewStruct(fields, nil))
+
+				return recursive
+			},
+			wantZeroSized: false,
+		},
+		{
+			name: "Big",
+			getTypeFn: func() types.Type {
+				field := types.NewVar(token.NoPos, nil, "_", types.NewArray(types.NewStruct(nil, nil), 1))
+				for range 10 {
+					field = types.NewVar(token.NoPos, nil, "_", types.NewStruct([]*types.Var{field, field}, nil))
+				}
+
+				nonEmptyField := types.NewVar(token.NoPos, nil, "_", types.NewArray(types.Typ[types.Bool], 1))
+				for range 10 {
+					nonEmptyField = types.NewVar(token.NoPos, nil, "_", types.NewStruct([]*types.Var{nonEmptyField}, nil))
+				}
+
+				fields := slices.Repeat([]*types.Var{field}, 1_000)
+				fields = append(fields, nonEmptyField)
+
+				return types.NewStruct(fields, nil)
+			},
+			wantZeroSized: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			c := newTestChecker(t, info, pkg, fset, astFile) // New checker for each test for isolation
+			c := newTestChecker(t) // New checker for each test for isolation
 
 			if tt.setupChecker != nil {
 				tt.setupChecker(c)
@@ -149,9 +203,11 @@ type ExcludableEmptyStruct struct{}
 				t.Errorf("ZeroSizedType() gotValueMethod = %v, want %v for type %s", gotValueMethod, tt.wantValueMethod, typ.String())
 			}
 
-			if tt.wantDetectedName != "" && !c.Detected.Has(tt.wantDetectedName) {
-				detectedItems := set.Sorted(c.Detected)
-				t.Errorf("ZeroSizedType() expected %q to be in Detected set, but it was not. Detected: %v", tt.wantDetectedName, detectedItems)
+			if tt.wantDetectedName != "" {
+				if _, ok := c.Detected[tt.wantDetectedName]; !ok {
+					detectedItems := slices.Sorted(maps.Keys(c.Detected))
+					t.Errorf("ZeroSizedType() expected %q to be in Detected set, but it was not. Detected: %v", tt.wantDetectedName, detectedItems)
+				}
 			}
 
 			_, cachedZeroSized := c.ZeroSizedType(typ)
@@ -186,7 +242,7 @@ type PtrToZSWithValueReceiver *ZSWithValueReceiver
 type PtrToZSWithPtrReceiverOnly *ZSWithPtrReceiverOnly
 type PtrToExcludableEmptyStruct *ExcludableEmptyStruct
 `
-	info, pkg, fset, astFile := parseSource(t, "test.go", src)
+	pkg := parseSource(t, "test.go", src)
 
 	tests := []struct {
 		name             string
@@ -248,7 +304,7 @@ type PtrToExcludableEmptyStruct *ExcludableEmptyStruct
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			c := newTestChecker(t, info, pkg, fset, astFile) // New checker for each test for isolation
+			c := newTestChecker(t) // New checker for each test for isolation
 
 			if tt.setupChecker != nil {
 				tt.setupChecker(c)

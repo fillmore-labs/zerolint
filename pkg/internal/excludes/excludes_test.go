@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,7 +85,6 @@ func TestReadExcludes(t *testing.T) {
 			t.Parallel()
 
 			got, err := ReadExcludes(tt.args.fsys, tt.args.name)
-
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("ReadExcludes() error = %v, wantErr %v", err, tt.wantErr)
 

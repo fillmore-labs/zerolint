@@ -1,4 +1,4 @@
-// Copyright 2024 Oliver Eikemeier. All Rights Reserved.
+// Copyright 2024-2025 Oliver Eikemeier. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,46 +22,40 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
-	"path"
 	"testing"
 
 	. "fillmore-labs.com/zerolint/pkg/internal/checker"
-	"fillmore-labs.com/zerolint/pkg/internal/filter"
-	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
-	"golang.org/x/tools/go/analysis"
 )
 
-// newTestChecker creates a new Checker with a Pass initialized for testing.
-func newTestChecker(tb testing.TB,
-	info *types.Info, pkg *types.Package, fset *token.FileSet, currentFile *ast.File,
-) *Checker {
+// newTestChecker creates a new Checker initialized for testing.
+func newTestChecker(tb testing.TB) *Checker {
 	tb.Helper()
 
-	pass := &analysis.Pass{
-		Pkg:       pkg,
-		TypesInfo: info,
-		Fset:      fset,
-		Files:     []*ast.File{currentFile},
-		ResultOf:  map[*analysis.Analyzer]any{excluded.Analyzer: filter.Filter{}},
-	}
-
-	c := New(pass)
-	c.CurrentImports = currentFile.Imports // Important for [Checker.Qualifier]
+	c := &Checker{}
+	c.Prepare()
 
 	return c
 }
 
-// parseSource is a helper to parse source and get [types.Info] and [types.Package].
-func parseSource(tb testing.TB, filename, src string) (*types.Info, *types.Package, *token.FileSet, *ast.File) {
+func parseFile(tb testing.TB, filename, src string) (*ast.File, *token.FileSet) {
 	tb.Helper()
 
 	fset := token.NewFileSet()
 	fset.AddFile(filename, -1, len(src))
 
-	f, err := parser.ParseFile(fset, filename, src, 0)
+	f, err := parser.ParseFile(fset, filename, src, parser.SkipObjectResolution)
 	if err != nil {
 		tb.Fatalf("failed to parse source: %v", err)
 	}
+
+	return f, fset
+}
+
+// parseSource is a helper to parse source and get [types.Package].
+func parseSource(tb testing.TB, filename, src string) *types.Package {
+	tb.Helper()
+
+	f, fset := parseFile(tb, filename, src)
 
 	conf := types.Config{Importer: importer.Default()}
 	info := &types.Info{
@@ -76,35 +70,7 @@ func parseSource(tb testing.TB, filename, src string) (*types.Info, *types.Packa
 		tb.Fatalf("failed to type check source: %v", err)
 	}
 
-	return info, pkg, fset, f
-}
-
-// parseSourceImports is a helper to parse source and get a minimal
-// types.Package and ast.File, primarily for testing import resolution.
-func parseSourceImports(tb testing.TB, pkgPath, src string) (*types.Package, *token.FileSet, *ast.File) {
-	tb.Helper()
-
-	fset := token.NewFileSet()
-
-	// We only need imports, not the full AST or type checking for this specific test.
-	f, err := parser.ParseFile(fset, "test.go", src, parser.ImportsOnly)
-	if err != nil {
-		tb.Fatalf("failed to parse source for imports: %v", err)
-	}
-
-	var pkgName string
-	if f.Name != nil {
-		pkgName = f.Name.Name
-	} else {
-		pkgName = path.Base(pkgPath)
-		if pkgName == "." || pkgName == "/" {
-			pkgName = "main" // Default if no package decl
-		}
-	}
-
-	currentPkg := types.NewPackage(pkgPath, pkgName)
-
-	return currentPkg, fset, f
+	return pkg
 }
 
 // getType is a helper to get a type by name from parsed source.
