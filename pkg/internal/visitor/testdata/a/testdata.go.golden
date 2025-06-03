@@ -22,7 +22,7 @@ func Exported() {
 	var x [0]string
 	var y [0]string
 
-	_ = struct{}{} // want "\\(zl:new\\)"
+	_ = struct{ _ [0]func() }{} // want "\\(zl:new\\)"
 
 	type empty struct{}
 	_ = empty{} // want "\\(zl:new\\)"

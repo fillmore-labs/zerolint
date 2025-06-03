@@ -25,10 +25,11 @@ import (
 	"path"
 	"testing"
 
+	"golang.org/x/tools/go/analysis"
+
 	. "fillmore-labs.com/zerolint/pkg/internal/checker"
 	"fillmore-labs.com/zerolint/pkg/internal/filter"
 	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
-	"golang.org/x/tools/go/analysis"
 )
 
 // newTestChecker creates a new Checker with a Pass initialized for testing.

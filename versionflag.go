@@ -14,35 +14,34 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package a
+package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime/debug"
+)
 
-func Exported() {
-	var x [0]string
-	var y [0]string
+// versionFlag represents a [flag] to print version information and exit the program.
+type versionFlag struct{}
 
-	_ = (new)(struct{ _ [0]func() }) // want "\\(zl:new\\)"
-
-	type empty struct{}
-	_ = new(empty) // want "\\(zl:new\\)"
-
-	xp, yp := &x, &y // want "\\(zl:add\\)" "\\(zl:add\\)"
-
-	_ = *xp // want "\\(zl:der\\)"
-
-	if xp == yp { // want "\\(zl:cmp\\)"
-		fmt.Println("equal")
+func (versionFlag) IsBoolFlag() bool { return true }
+func (versionFlag) String() string   { return "true" }
+func (versionFlag) Set(_ string) error {
+	progname, err := os.Executable()
+	if err != nil {
+		return err
 	}
 
-	if xp != yp { // want "\\(zl:cmp\\)"
-		fmt.Println("not equal")
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		fmt.Printf("%s version %s build with %s\n",
+			filepath.Base(progname), bi.Main.Version, bi.GoVersion)
+	} else {
+		fmt.Printf("%s version (unknown)\n", filepath.Base(progname))
 	}
 
-	_, _ = any(xp).((*[0]string)) // want "\\(zl:art\\)"
+	os.Exit(0)
 
-	switch any(xp).(type) {
-	case (*[0]string): // want "\\(zl:art\\)"
-	case string:
-	}
+	return nil
 }

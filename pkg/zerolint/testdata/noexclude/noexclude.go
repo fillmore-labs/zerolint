@@ -14,35 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package a
+package noexclude
 
-import "fmt"
+type excludedError struct{} //zerolint:exclude
 
-func Exported() {
-	var x [0]string
-	var y [0]string
-
-	_ = (new)(struct{ _ [0]func() }) // want "\\(zl:new\\)"
-
-	type empty struct{}
-	_ = new(empty) // want "\\(zl:new\\)"
-
-	xp, yp := &x, &y // want "\\(zl:add\\)" "\\(zl:add\\)"
-
-	_ = *xp // want "\\(zl:der\\)"
-
-	if xp == yp { // want "\\(zl:cmp\\)"
-		fmt.Println("equal")
-	}
-
-	if xp != yp { // want "\\(zl:cmp\\)"
-		fmt.Println("not equal")
-	}
-
-	_, _ = any(xp).((*[0]string)) // want "\\(zl:art\\)"
-
-	switch any(xp).(type) {
-	case (*[0]string): // want "\\(zl:art\\)"
-	case string:
-	}
+func (*excludedError) Error() string { // want "\\(zl:err\\)"
+	return "excluded error"
 }

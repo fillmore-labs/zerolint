@@ -17,38 +17,40 @@
 package zerolint_test
 
 import (
-	"errors"
-	"io/fs"
+	"bytes"
+	"io"
+	"log"
+	"log/slog"
+	"regexp"
 	"testing"
 
-	"golang.org/x/tools/go/analysis/analysistest"
-
 	. "fillmore-labs.com/zerolint/pkg/zerolint"
+	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
-type ignoreTestErrors struct{}
-
-func (ignoreTestErrors) Errorf(_ string, _ ...any) {}
-
-func TestAnalyzerWithExcludedFlag(t *testing.T) {
+func TestOptions(t *testing.T) {
 	t.Parallel()
 
-	a := New(WithFlags(true))
-	a.RunDespiteErrors = true
-
-	if err := a.Flags.Set("excluded", "/nonexistent"); err != nil {
-		t.Skipf("Can't set excluded: %v", err)
+	opts := Options{
+		WithExcludeComments(true),
+		WithExcludes([]string{"exclude1", "exclude2"}),
+		WithFlags(false),
+		WithGenerated(false),
+		WithLevel(level.Basic),
+		WithLogger(log.New(io.Discard, "test:", 0)),
+		WithRegex(regexp.MustCompile("^.*$")),
+		WithZeroTrace(true),
+		Options{},
 	}
 
-	dir := analysistest.TestData()
-	result := analysistest.Run(ignoreTestErrors{}, dir, a, "test/none")
+	var buf bytes.Buffer
+	h := slog.NewTextHandler(&buf, nil)
+	l := slog.New(h)
 
-	if len(result) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(result))
-	}
+	l.Info("test", "options", opts)
 
-	err := result[0].Action.Err
-	if !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("wanted %v, got: %v", fs.ErrNotExist, err)
+	got := buf.String()
+	if len(got) == 0 {
+		t.Errorf("Expected non-empty log, got: %v", got)
 	}
 }

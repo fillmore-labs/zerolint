@@ -16,33 +16,18 @@
 
 package a
 
-import "fmt"
+import (
+	"testing"
 
-func Exported() {
-	var x [0]string
-	var y [0]string
+	"gotest.tools/v3/assert"
+)
 
-	_ = (new)(struct{ _ [0]func() }) // want "\\(zl:new\\)"
+func TestGoTestTools(t *testing.T) {
+	assert.NilError(t, nil)
 
-	type empty struct{}
-	_ = new(empty) // want "\\(zl:new\\)"
+	assert.Assert(t, true, "")
 
-	xp, yp := &x, &y // want "\\(zl:add\\)" "\\(zl:add\\)"
+	assert.ErrorIs(t, ErrOne, ErrTwo) // want "\\(zl:cmp\\)"
 
-	_ = *xp // want "\\(zl:der\\)"
-
-	if xp == yp { // want "\\(zl:cmp\\)"
-		fmt.Println("equal")
-	}
-
-	if xp != yp { // want "\\(zl:cmp\\)"
-		fmt.Println("not equal")
-	}
-
-	_, _ = any(xp).((*[0]string)) // want "\\(zl:art\\)"
-
-	switch any(xp).(type) {
-	case (*[0]string): // want "\\(zl:art\\)"
-	case string:
-	}
+	assert.Equal(t, ErrOne, ErrOne) // want "\\(zl:cmp\\)"
 }

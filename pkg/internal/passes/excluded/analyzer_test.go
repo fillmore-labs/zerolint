@@ -22,12 +22,13 @@ import (
 	"go/types"
 	"testing"
 
-	"fillmore-labs.com/zerolint/pkg/internal/filter"
-	. "fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/analysistest"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"fillmore-labs.com/zerolint/pkg/internal/filter"
+	. "fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
 )
 
 func TestExcludedAnalyzer(t *testing.T) {

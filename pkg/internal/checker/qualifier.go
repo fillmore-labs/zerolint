@@ -35,7 +35,8 @@ func (c *Checker) Qualifier(pkg *types.Package) string {
 		}
 	}
 
-	return pkg.Name()
+	// Not imported - default to quoted path, breaking the build in an informative way.
+	return strconv.Quote(pkg.Path())
 }
 
 // importName extracts the qualifier for a given package from a single import spec.

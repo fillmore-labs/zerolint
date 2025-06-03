@@ -31,6 +31,7 @@ const (
 	catArgumentNil         // arg
 	catCast                // cst
 	catCastNil             // nil
+	catCastUnsafe          // cup
 	catComparison          // cmp
 	catComparisonError     // cme
 	catComparisonInterface // cmi

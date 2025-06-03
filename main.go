@@ -17,12 +17,16 @@
 package main
 
 import (
-	"fillmore-labs.com/zerolint/pkg/zerolint"
 	"golang.org/x/tools/go/analysis/singlechecker"
+
+	"fillmore-labs.com/zerolint/pkg/zerolint"
 )
 
 func main() {
 	a := zerolint.New(zerolint.WithFlags(true))
+	if a.Flags.Lookup("V") == nil {
+		a.Flags.Var(versionFlag{}, "V", "print version and exit")
+	}
 
 	singlechecker.Main(a)
 }

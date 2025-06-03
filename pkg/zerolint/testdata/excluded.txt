@@ -1,2 +1,2 @@
-# zerolint exclusions for go.test/basic
-go.test/basic.noError
+# zerolint exclusions for test/basic
+test/basic.noError
