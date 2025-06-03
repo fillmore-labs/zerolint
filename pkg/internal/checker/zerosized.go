@@ -54,48 +54,63 @@ func (c *Checker) ZeroSizedType(t types.Type) (valueMethod, zeroSized bool) {
 		return false, false
 	}
 
-	// typeCache holds cached results of zero-sized and value method checks for a type.
-	type typeCache struct {
-		zeroSized, valueMethod bool
-	}
-
-	var zS, vM bool
-	// Check cache first, [typeutil.Map] resolves aliases
-	if cached, ok := c.cache.At(t).(typeCache); ok {
-		zS, vM = cached.zeroSized, cached.valueMethod
-	} else {
-		// Recursively check if the underlying type is zero-sized.
-		zS = isZeroSized(t)
-		if zS { // Check if the zero-sized type has value receiver methods.
-			vM = hasValueMethod(t)
-		}
-
-		// Cache the result.
-		c.cache.Set(t, typeCache{zeroSized: zS, valueMethod: vM})
-	}
+	vM, zS := c.lookupOrCalculate(t)
 
 	// The cached zS value reflects structural zero-sizedness. We can't return it directly,
 	// since the specific type name can differ for aliases vs. original types, which gives
 	// different results in subsequent filtering based on user-defined exclusions.
 	if zS {
-		typeString := types.TypeString(t, nil)
+		typeName := types.TypeString(t, nil)
 
-		detectedType := typeString
-		if vM {
-			detectedType += " (value methods)"
-		}
+		c.trackType(typeName, vM)
 
-		// Track the zero-sized type name for reporting, even if excluded.
-		// Excluded types are still detected but not considered for analysis.
-		c.Detected.Insert(detectedType)
-
-		// Filter out type name by user-specified excludes or regex.
-		if c.Excludes.Has(typeString) || c.Regex != nil && !c.Regex.MatchString(typeString) {
-			zS = false // Excluded by the user-specified list or regex.
-		}
+		zS = !c.isExcluded(typeName)
 	}
 
 	return vM, zS
+}
+
+func (c *Checker) lookupOrCalculate(t types.Type) (valueMethod, zeroSized bool) {
+	// typeCache holds cached results of zero-sized and value method checks for a type.
+	type typeCache struct {
+		zeroSized, valueMethod bool
+	}
+
+	// Check cache first, [typeutil.Map] resolves aliases
+	if cached, ok := c.cache.At(t).(typeCache); ok {
+		return cached.valueMethod, cached.zeroSized
+	}
+
+	// Recursively check if the underlying type is zero-sized.
+	if !isZeroSized(t) {
+		// Cache the result.
+		c.cache.Set(t, typeCache{zeroSized: false})
+
+		return false, false
+	}
+	// Check if the zero-sized type has value receiver methods.
+	vM := hasValueMethod(t)
+
+	// Cache the result.
+	c.cache.Set(t, typeCache{zeroSized: true, valueMethod: vM})
+
+	return vM, true
+}
+
+// Track the zero-sized type name for reporting, even if excluded.
+// Excluded types are still detected but not considered for analysis.
+func (c *Checker) trackType(typeName string, vM bool) {
+	detectedType := typeName
+	if vM {
+		detectedType += " (value methods)"
+	}
+
+	c.Detected.Insert(detectedType)
+}
+
+// Filter out type name by user-specified excludes or regex.
+func (c *Checker) isExcluded(typeName string) bool {
+	return c.Excludes.Has(typeName) || c.Regex != nil && !c.Regex.MatchString(typeName)
 }
 
 // isIgnored checks if a type should be ignored by the zero-size analysis

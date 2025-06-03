@@ -95,6 +95,10 @@ func (v *Visitor) visitCallFun(n *ast.CallExpr) bool {
 	case *ast.SelectorExpr:
 		if sel, ok := v.check.TypesInfo().Selections[fun]; ok {
 			// Selection expression
+			if v.level.Below(level.Extended) {
+				return true
+			}
+
 			return v.visitCallSelection(fun, sel)
 		}
 
@@ -120,10 +124,6 @@ func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection
 
 	case types.MethodExpr:
 		// Method used as a function value (e.g., (*T).Method).
-		if v.level.Below(level.Extended) {
-			return true
-		}
-
 		if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(sel.Recv()); zeroSized {
 			cM := msgFormatf(catMethodExpression, valueMethod,
 				"method expression receiver is pointer to zero-size type %q", elem)

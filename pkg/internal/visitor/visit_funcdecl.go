@@ -25,10 +25,6 @@ import (
 	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
-// errorFunc holds a reference to the Error() method of the standard library error interface.
-var errorFunc = types.Universe. //nolint:gochecknoglobals,forcetypeassert
-				Lookup("error").Type().Underlying().(*types.Interface).Method(0)
-
 // visitFuncDecl examines method declarations with pointer receivers to zero-sized types.
 func (v *Visitor) visitFuncDecl(n *ast.FuncDecl) bool {
 	if strings.HasPrefix(n.Name.Name, "_Cfunc_") {

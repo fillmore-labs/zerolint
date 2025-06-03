@@ -69,7 +69,7 @@ func processGenDecl(pass *analysis.Pass, genDecl *ast.GenDecl) {
 
 	for _, spec := range genDecl.Specs {
 		ts, ok := spec.(*ast.TypeSpec)
-		if !ok {
+		if !ok { // This should not happen.
 			continue
 		}
 

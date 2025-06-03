@@ -51,7 +51,7 @@ func TestAnalyzer(t *testing.T) {
 		args args
 		want string
 	}{
-		{"basic", args{Options{}, "go.test/basic"}, "go.test/basic.myError (value methods)"},
+		{"basic", args{Options{Level: level.Basic}, "go.test/basic"}, "go.test/basic.myError (value methods)"},
 		{"full", args{Options{Level: level.Full, Excludes: set.New(excludedTypeNames...)}, "go.test/a"}, "[0]string"},
 	}
 	for _, tt := range tests {

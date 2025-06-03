@@ -50,10 +50,11 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 		{
 			name: "basic with zerotrace",
 			options: Options{
-				WithLevel(level.Default),
+				WithLevel(level.Basic),
 				WithExcludes(excludedTypeNames),
 				WithZeroTrace(true),
 				WithGenerated(true),
+				WithExcludeComments(true),
 				WithRegex(regexp.MustCompile(`^go\.test/`)),
 			},
 			want: []string{"go.test/basic.aliasError", "go.test/basic.myError"},
@@ -65,7 +66,7 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 				WithFlags(true),
 			},
 			flags: map[string]string{
-				"level":     "default",
+				"level":     "basic",
 				"excluded":  dir + "/excluded.txt",
 				"zerotrace": "true",
 				"generated": "true",
@@ -73,6 +74,16 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 			},
 			want: []string{"go.test/basic.aliasError", "go.test/basic.myError"},
 			pkg:  "go.test/basic",
+		},
+		{
+			name: "no exclusions",
+			options: Options{
+				WithLevel(level.Full),
+				WithZeroTrace(true),
+				WithExcludeComments(false),
+			},
+			want: []string{"go.test/noexclude.excludedError"},
+			pkg:  "go.test/noexclude",
 		},
 	}
 	for _, tt := range tests {

@@ -74,17 +74,26 @@ func nodeFilter(lvl level.LintLevel) []ast.Node {
 
 		fallthrough
 
-	default:
+	case lvl.AtLeast(level.Basic):
 		// Basic analysis at the default level.
+		nodes = append(nodes,
+			// keep-sorted start
+			filter((*Visitor).visitFuncDecl),
+			filter((*Visitor).visitStar),
+			filter((*Visitor).visitStructType),
+			filter((*Visitor).visitTypeSpec),
+			// keep-sorted end
+		)
+
+		fallthrough
+
+	default:
+		// Minimal analysis at the CI level.
 		nodes = append(nodes,
 			// keep-sorted start
 			filter((*Visitor).visitBinary),
 			filter((*Visitor).visitCall),
 			filter((*Visitor).visitFile),
-			filter((*Visitor).visitFuncDecl),
-			filter((*Visitor).visitStar),
-			filter((*Visitor).visitStructType),
-			filter((*Visitor).visitTypeSpec),
 			// keep-sorted end
 		)
 	}
@@ -120,6 +129,9 @@ func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) { //nolint:cyclop
 		return v.visitCall(n)
 	case *ast.File:
 		return v.visitFile(n)
+	// keep-sorted end
+
+	// keep-sorted start
 	case *ast.FuncDecl:
 		return v.visitFuncDecl(n)
 	case *ast.StarExpr:
