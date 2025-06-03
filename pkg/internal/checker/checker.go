@@ -20,13 +20,14 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"io"
 	"regexp"
 
-	"fillmore-labs.com/zerolint/pkg/internal/filter"
-	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
-	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
+
+	"fillmore-labs.com/zerolint/pkg/internal/filter"
+	"fillmore-labs.com/zerolint/pkg/internal/set"
 )
 
 // Checker provides helper functions for analyzing and reporting pointers to zero-sized types.
@@ -68,10 +69,6 @@ func (c *Checker) Prepare(pass *analysis.Pass) {
 
 	c.Detected = set.New[string]()
 	c.seenStars = set.New[token.Pos]()
-
-	if excludedTypeDefs, ok := pass.ResultOf[excluded.Analyzer].(filter.Filter); ok {
-		c.ExcludedTypeDefs = excludedTypeDefs
-	}
 }
 
 // TypesInfo returns the type information for the current analysis pass.
@@ -79,8 +76,8 @@ func (c *Checker) TypesInfo() *types.Info {
 	return c.pass.TypesInfo
 }
 
-// Print outputs the syntax tree representation of the given AST node `n` to standard output.
+// Fprint outputs the syntax tree representation of the given AST node `n` to `w“.
 // This can be useful for debugging purposes.
-func (c *Checker) Print(n any) error {
-	return ast.Print(c.pass.Fset, n)
+func (c *Checker) Fprint(w io.Writer, n any) error {
+	return ast.Fprint(w, c.pass.Fset, n, ast.NotNilFilter)
 }

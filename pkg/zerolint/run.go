@@ -20,80 +20,80 @@ import (
 	"flag"
 	"fmt"
 	"regexp"
-	"sync"
+
+	"golang.org/x/tools/go/analysis"
 
 	"fillmore-labs.com/zerolint/pkg/internal/excludes"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"fillmore-labs.com/zerolint/pkg/internal/visitor"
-	"golang.org/x/tools/go/analysis"
 )
 
 // run returns a function that executes the analysis pass using the provided options.
 // If zero-sized types are detected and zeroTrace is enabled, the function logs the detected types.
-func (o options) run(s *flag.FlagSet) func(pass *analysis.Pass) (any, error) {
-	delayedOptions := optionsFromFlags(&o, s)
+// run is the main analysis function for the analyzer.
+func (o *options) run(pass *analysis.Pass) (any, error) {
+	// Avoid re-reading the excluded file for every package
+	if o.excludeRead.Do(o.readExcludedFile); o.excludeReadErr != nil {
+		return nil, o.excludeReadErr
+	}
 
-	return func(pass *analysis.Pass) (any, error) {
-		if err := delayedOptions(); err != nil {
-			return nil, err
+	v := visitor.New(o.Options)
+	res, err := v.Run(pass)
+
+	if err == nil && o.zeroTrace && o.logger != nil && v.HasDetected() {
+		o.logger.Printf("found zero-sized types in %q:\n", pass.Pkg.Path())
+
+		for name := range v.AllDetected() {
+			o.logger.Printf("- %s\n", name)
 		}
+	}
 
-		v := visitor.New(o.Options)
-		res, err := v.Run(pass)
+	return res, err
+}
 
-		if err == nil && o.zeroTrace && o.logger != nil && v.HasDetected() {
-			o.logger.Printf("found zero-sized types in %q:\n", pass.Pkg.Path())
+func (o *options) readExcludedFile() {
+	if o.excludedFile == "" {
+		return
+	}
 
-			for name := range v.AllDetected() {
-				o.logger.Printf("- %s\n", name)
-			}
-		}
+	// If the -excluded flag was provided, amend programmatic excludes.
+	excludedTypeNames, err := excludes.ReadExcludes(osFS{}, o.excludedFile)
+	if err != nil {
+		o.excludeReadErr = fmt.Errorf("error handling -excluded flag: %w", err)
 
-		return res, err
+		return
+	}
+
+	if o.Excludes == nil {
+		o.Excludes = set.New[string]()
+	}
+
+	for _, e := range excludedTypeNames {
+		o.Excludes.Insert(e)
 	}
 }
 
-func optionsFromFlags(o *options, s *flag.FlagSet) func() error {
-	if !o.flags {
-		return func() error { return nil }
+// flags returns a [flag.FlagSet] containing command-line flags that can
+// configure the analyzer's behavior. These flags correspond to the fields
+// in the [options] struct.
+// The returned FlagSet is used by the analysis driver to parse command-line
+// arguments for the analyzer.
+func (o *options) flags() flag.FlagSet {
+	var flags flag.FlagSet
+	if !o.withFlags {
+		return flags
 	}
 
-	var (
-		regex    regexp.Regexp // For -match flag; o.Regex is *regexp.Regexp
-		excluded string        // For -excluded flag; o.Excludes is []string
-	)
+	if o.Regex == nil {
+		o.Regex = &regexp.Regexp{}
+	}
 
 	// Use programmatic options as defaults for flags.
-	s.TextVar(&o.Level, "level", o.Level, "analysis level (Default, Extended, Full)")
-	s.TextVar(&regex, "match", &regexp.Regexp{}, "only check types matching this regex, useful with -fix")
-	s.StringVar(&excluded, "excluded", "", "read excluded types from this file")
-	s.BoolVar(&o.zeroTrace, "zerotrace", o.zeroTrace, "trace found zero-sized types")
-	s.BoolVar(&o.Generated, "generated", o.Generated, "check generated files")
+	flags.TextVar(&o.Level, "level", o.Level, "analysis level (Default, Extended, Full)")
+	flags.TextVar(o.Regex, "match", o.Regex, "only check types matching this regex, useful with -fix")
+	flags.StringVar(&o.excludedFile, "excluded", o.excludedFile, "read excluded types from this file")
+	flags.BoolVar(&o.zeroTrace, "zerotrace", o.zeroTrace, "trace found zero-sized types")
+	flags.BoolVar(&o.Generated, "generated", o.Generated, "check generated files")
 
-	if s.Lookup("V") == nil {
-		s.Var(versionFlag{}, "V", "print version and exit")
-	}
-
-	// Delayed evaluation to allow the flags to be parsed before the analysis is run.
-	delayedOptions := func() error {
-		// If the -excluded flag was provided, read from the file and override programmatic excludes.
-		if excluded != "" {
-			excludedTypeNames, err := excludes.ReadExcludes(osFS{}, excluded)
-			if err != nil {
-				return fmt.Errorf("error handling -excluded flag: %w", err)
-			}
-
-			o.Excludes = set.New(excludedTypeNames...)
-		}
-
-		// If -match flag was used, override programmatic regex.
-		if regex.String() != "" {
-			o.Regex = &regex
-		}
-
-		return nil
-	}
-
-	// Avoid re-reading the excluded file for every package
-	return sync.OnceValue(delayedOptions)
+	return flags
 }

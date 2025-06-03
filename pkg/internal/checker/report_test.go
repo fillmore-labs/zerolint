@@ -21,8 +21,9 @@ import (
 	"go/types"
 	"testing"
 
-	. "fillmore-labs.com/zerolint/pkg/internal/checker"
 	"golang.org/x/tools/go/analysis"
+
+	. "fillmore-labs.com/zerolint/pkg/internal/checker"
 )
 
 type mockNode struct{}
@@ -62,8 +63,7 @@ func TestReport(t *testing.T) {
 		Pkg: types.NewPackage("example.com/test", "test"), // Important for calcIgnored
 	}
 
-	c := Checker{}
-	c.Prepare(mockPass)
+	c := New(mockPass)
 
 	rng := mockNode{}
 	message := CategorizedMessage{

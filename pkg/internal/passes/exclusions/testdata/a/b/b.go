@@ -21,16 +21,15 @@ type (
 	Excluded1 struct{}
 
 	Excluded2 struct{}
+
+	Excluded2a = NotExcluded1
 )
 
 type (
-	//zerolint:exclude
-	Excluded3 struct{}
-
-	Excluded4 struct{} //zerolint:exclude
-
 	NotExcluded1 struct{}
 
-	//zerolint:
+	// zerolint:
 	NotExcluded2 struct{}
+
+	NotExcluded2a = NotExcluded2
 )

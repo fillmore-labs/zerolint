@@ -28,9 +28,9 @@ func twoarg(a, b empty) { // want "function parameters \"a\", \"b\" point to zer
 }
 
 func oneresult() (e empty) { // want "function result \"e\" points to zero-sized type"
-	return empty{} // want "\\(zl:add\\)"
+	return empty{} // want " \\(zl:add\\)$"
 }
 
 func tworesult() (e, f empty) { // want "function results \"e\", \"f\" point to zero-sized type"
-	return empty{}, empty{} // want "\\(zl:add\\)" "\\(zl:add\\)"
+	return empty{}, empty{} // want " \\(zl:add\\)$" " \\(zl:add\\)$"
 }

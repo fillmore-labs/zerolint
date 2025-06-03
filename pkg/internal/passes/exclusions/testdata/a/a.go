@@ -16,13 +16,22 @@
 
 package a
 
-import "go.test/a/b"
+import "test/a/b"
 
 var (
-	_ b.Excluded1    // want "IS excluded"
-	_ b.Excluded2    // want "IS excluded"
-	_ b.Excluded3    // want "IS excluded"
-	_ b.Excluded4    // want "IS excluded"
-	_ b.NotExcluded1 // want "IS NOT excluded"
-	_ b.NotExcluded2 // want "IS NOT excluded"
+	_ b.Excluded1     // want "IS excluded"
+	_ b.Excluded2     // want "IS excluded"
+	_ b.Excluded2a    // want "IS excluded"
+	_ b.NotExcluded1  // want "IS NOT excluded"
+	_ b.NotExcluded2  // want "IS NOT excluded"
+	_ b.NotExcluded2a // want "IS NOT excluded"
+
+	_ Excluded1    // want "IS excluded"
+	_ NotExcluded1 // want "IS NOT excluded"
 )
+
+//zerolint:exclude
+type Excluded1 struct{}
+
+//zerolint:
+type NotExcluded1 struct{}

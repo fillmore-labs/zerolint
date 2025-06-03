@@ -26,9 +26,9 @@ import (
 
 type myError struct{}
 
-type myErrorPtr = *myError // want "\\(zl:dcl\\+\\)"
+type myErrorPtr = *myError // want " \\(zl:dcl\\+\\)$"
 
-func (myErrorPtr) Error() string { // want "\\(zl:err\\+\\)"
+func (myErrorPtr) Error() string { // want " \\(zl:err\\+\\)$"
 	return "my error"
 }
 
@@ -41,7 +41,7 @@ func (myError) GoString() string {
 }
 
 type embeddedError struct {
-	*myError // want "\\(zl:emb\\+\\)"
+	*myError // want " \\(zl:emb\\+\\)$"
 	_        *myError
 }
 
@@ -55,21 +55,21 @@ func Exported() {
 		fmt.Println("nil")
 	}
 
-	if errors.Is(func() error { // want "\\(zl:cme\\+\\)"
+	if errors.Is(func() error { // want " \\(zl:cme\\+\\)$"
 		return ErrOne
 	}(), ErrTwo) {
 		fmt.Println("equal")
 	}
 
-	if ErrOne == ErrTwo { // want "\\(zl:cmp\\+\\)"
+	if ErrOne == ErrTwo { // want " \\(zl:cmp\\+\\)$"
 		fmt.Println("equal")
 	}
 
-	if ErrOne != ErrTwo { // want "\\(zl:cmp\\+\\)"
+	if ErrOne != ErrTwo { // want " \\(zl:cmp\\+\\)$"
 		fmt.Println("not equal")
 	}
 
-	if (Is)(ErrOne, ErrTwo) { // want "\\(zl:cmp\\+\\)"
+	if (Is)(ErrOne, ErrTwo) { // want " \\(zl:cmp\\+\\)$"
 		fmt.Println("equal")
 	}
 

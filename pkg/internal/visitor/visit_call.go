@@ -21,13 +21,14 @@ import (
 	"go/types"
 	"strings"
 
+	"golang.org/x/tools/go/analysis"
+
 	"fillmore-labs.com/zerolint/pkg/internal/checker"
 	"fillmore-labs.com/zerolint/pkg/zerolint/level"
-	"golang.org/x/tools/go/analysis"
 )
 
 // visitCall checks for type casts T(x), errors.Is(x, y), errors.As(x, y) and new(T).
-func (v *Visitor) visitCall(n *ast.CallExpr) bool { //nolint:cyclop
+func (v *Visitor) visitCall(n *ast.CallExpr) bool {
 	switch funType := v.check.TypesInfo().Types[n.Fun]; {
 	case funType.IsBuiltin(): // Check for calls to new(T).
 		if v.level.Below(level.Extended) {
@@ -66,7 +67,7 @@ func isCfunc(name string) bool {
 	return strings.HasPrefix(name, "_Cfunc_")
 }
 
-// visitCallArgs checks explicit nil arguments to pointers to zero-sized parameters.
+// visitCallArgs checks for explicit nil arguments to pointers to zero-sized parameters.
 func (v *Visitor) visitCallArgs(sig *types.Signature, args []ast.Expr) {
 	params := sig.Params()
 	for i := range min(params.Len(), len(args)) { // Don't deal with variadic functions for now
@@ -95,6 +96,10 @@ func (v *Visitor) visitCallFun(n *ast.CallExpr) bool {
 	case *ast.SelectorExpr:
 		if sel, ok := v.check.TypesInfo().Selections[fun]; ok {
 			// Selection expression
+			if v.level.Below(level.Extended) {
+				return true
+			}
+
 			return v.visitCallSelection(fun, sel)
 		}
 
@@ -120,10 +125,6 @@ func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection
 
 	case types.MethodExpr:
 		// Method used as a function value (e.g., (*T).Method).
-		if v.level.Below(level.Extended) {
-			return true
-		}
-
 		if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(sel.Recv()); zeroSized {
 			cM := msgFormatf(catMethodExpression, valueMethod,
 				"method expression receiver is pointer to zero-size type %q", elem)
@@ -140,18 +141,19 @@ func (v *Visitor) visitCallSelection(fun *ast.SelectorExpr, sel *types.Selection
 
 // visitCallIdent processes encoding/json.Unmarshal (ignored as it requires pointer arguments),
 // errors.Is and errors.As from the standard library or golang.org/x/exp/errors.
-func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolint:cyclop
-	obj := v.check.TypesInfo().Uses[fun]
-	if obj == nil {
+func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolint:funlen
+	obj, ok := v.check.TypesInfo().Uses[fun]
+	if !ok {
 		return true
 	}
 
-	pkg := obj.Pkg()
-	if pkg == nil {
-		return true
+	var path string
+	if pkg := obj.Pkg(); pkg != nil {
+		path = pkg.Path()
 	}
 
-	path, name := pkg.Path(), obj.Name()
+	name := obj.Name()
+
 	switch path {
 	case "encoding/json":
 		if name == "Unmarshal" {
@@ -160,8 +162,8 @@ func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolin
 
 		return true
 
-	case "errors", "golang.org/x/exp/errors":
-		if len(n.Args) != 2 { //nolint:mnd
+	case "errors", "golang.org/x/exp/errors", "golang.org/x/xerrors", "github.com/pkg/errors":
+		if len(n.Args) != 2 {
 			return true // We are only interested in comparisons.
 		}
 
@@ -177,19 +179,30 @@ func (v *Visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolin
 		}
 
 	case "github.com/stretchr/testify/assert", "github.com/stretchr/testify/require":
-		if len(n.Args) < 3 { //nolint:mnd
+		if len(n.Args) < 3 {
 			return true // We are only interested in comparisons.
 		}
 
-		switch name {
+		switch name { // assert.Equal does not compare object identity, but uses [reflect.DeepEqual].
 		case "ErrorAs", "ErrorAsf", "NotErrorAs", "NotErrorAsf":
-			return false // Do not report pointers in ....ErrorAs(t, ..., ...).
+			return false // Do not report pointers in ErrorAs(t, ..., ...).
 
 		case "ErrorIs", "ErrorIsf", "NotErrorIs", "NotErrorIsf":
 			return v.visitCmp(n, n.Args[1], n.Args[2]) // Delegate analysis of ErrorIs(t, ..., ...) to visitCmp.
 
-		case "Equal", "NotEqual":
-			return true // assert.Equal does not compare object identity, but uses [reflect.DeepEqual].
+		default:
+			return true
+		}
+
+	case "gotest.tools/v3/assert":
+		if len(n.Args) < 3 {
+			return true // gotest.tools comparison functions typically take at least t, expected, actual.
+		}
+
+		switch name {
+		case "Equal", "ErrorIs":
+			// Delegate analysis of assert.Equal(t, ..., ...) to visitCmp.
+			return v.visitCmp(n, n.Args[1], n.Args[2])
 
 		default:
 			return true
@@ -208,7 +221,9 @@ func visitMethodVal(sel *types.Selection) bool {
 		return true
 	}
 
-	recv := fun.Signature().Recv().Type() // I'm not using sel.Recv(), since [json.Decoder] could be embedded
+	// Use the method's declared receiver type rather than the selection's receiver
+	// type (sel.Recv()) to correctly identify [json.Decoder], even if it's embedded.
+	recv := fun.Signature().Recv().Type()
 
 	typeName, ok := pointerToTypeName(recv)
 	if !ok {
@@ -238,10 +253,29 @@ func pointerToTypeName(t types.Type) (*types.TypeName, bool) {
 	return elem.Obj(), true
 }
 
-// visitCast checks for type casts of nil to pointers of zero-sized types, like (*struct{})(nil).
+// visitCast checks for type casts:
+// - nil to pointers of zero-sized types, like (*struct{})(nil).
+// - casts of pointers of zero-sized types to [unsafe.Pointer], like unsafe.Pointer(&struct{}{}).
 func (v *Visitor) visitCast(n *ast.CallExpr, t types.Type) bool {
 	if len(n.Args) != 1 {
 		return true
+	}
+
+	if b, ok := t.(*types.Basic); ok && b.Kind() == types.UnsafePointer {
+		tv, ok := v.check.TypesInfo().Types[n.Args[0]]
+		if !ok {
+			return true // should not happen
+		}
+
+		elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(tv.Type)
+		if !zeroSized { // Not a pointer to a zero-sized type.
+			return true
+		}
+
+		cM := msgFormatf(catCastUnsafe, valueMethod, "cast of pointer to zero-size type %q to unsafe.Pointer", elem)
+		v.check.Report(n, cM, nil)
+
+		return false
 	}
 
 	elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t)
@@ -251,7 +285,7 @@ func (v *Visitor) visitCast(n *ast.CallExpr, t types.Type) bool {
 
 	tv, ok := v.check.TypesInfo().Types[n.Args[0]]
 	if !ok {
-		return true
+		return true // should not happen
 	}
 
 	var (

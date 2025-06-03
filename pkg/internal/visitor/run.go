@@ -20,10 +20,13 @@ import (
 	"errors"
 	"go/ast"
 
-	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"fillmore-labs.com/zerolint/pkg/internal/filter"
+	"fillmore-labs.com/zerolint/pkg/internal/passes/exclusions"
+	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
 // ErrNoInspectorResult is returned when the ast inspector is missing.
@@ -33,10 +36,18 @@ var ErrNoInspectorResult = errors.New("zerolint: inspector result missing")
 func (v *Visitor) Run(pass *analysis.Pass) (any, error) {
 	v.check.Prepare(pass)
 
+	if excludedTypeDefs, err := exclusions.CalculateExclusions(pass); err == nil {
+		v.check.ExcludedTypeDefs = filter.New(excludedTypeDefs)
+	} else if !errors.Is(err, exclusions.ErrNoExclusionsResult) {
+		return nil, err
+	}
+
 	in, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	if !ok {
 		return nil, ErrNoInspectorResult
 	}
+
+	v.in = in
 
 	nodes := nodeFilter(v.level)
 	in.Nodes(nodes, v.visit)
@@ -54,10 +65,10 @@ func nodeFilter(lvl level.LintLevel) []ast.Node {
 		// Node types are included at `full` level to perform a complete analysis.
 		nodes = append(nodes,
 			// keep-sorted start
-			filter((*Visitor).visitFuncType),
-			filter((*Visitor).visitTypeAssert),
-			filter((*Visitor).visitTypeSwitch),
-			filter((*Visitor).visitUnary),
+			node((*Visitor).visitFuncType),
+			node((*Visitor).visitTypeAssert),
+			node((*Visitor).visitTypeSwitch),
+			node((*Visitor).visitUnary),
 			// keep-sorted end
 		)
 
@@ -67,24 +78,33 @@ func nodeFilter(lvl level.LintLevel) []ast.Node {
 		// Less node types are included at `extended` level to perform a more lenient analysis.
 		nodes = append(nodes,
 			// keep-sorted start
-			filter((*Visitor).visitFuncLit),
-			filter((*Visitor).visitValueSpec),
+			node((*Visitor).visitFuncLit),
+			node((*Visitor).visitValueSpec),
+			// keep-sorted end
+		)
+
+		fallthrough
+
+	case lvl.AtLeast(level.Basic):
+		// Basic analysis at the default level.
+		nodes = append(nodes,
+			// keep-sorted start
+			node((*Visitor).visitFuncDecl),
+			node((*Visitor).visitStar),
+			node((*Visitor).visitStructType),
+			node((*Visitor).visitTypeSpec),
 			// keep-sorted end
 		)
 
 		fallthrough
 
 	default:
-		// Basic analysis at the default level.
+		// Minimal analysis at the CI level.
 		nodes = append(nodes,
 			// keep-sorted start
-			filter((*Visitor).visitBinary),
-			filter((*Visitor).visitCall),
-			filter((*Visitor).visitFile),
-			filter((*Visitor).visitFuncDecl),
-			filter((*Visitor).visitStar),
-			filter((*Visitor).visitStructType),
-			filter((*Visitor).visitTypeSpec),
+			node((*Visitor).visitBinary),
+			node((*Visitor).visitCall),
+			node((*Visitor).visitFile),
 			// keep-sorted end
 		)
 	}
@@ -92,13 +112,13 @@ func nodeFilter(lvl level.LintLevel) []ast.Node {
 	return nodes
 }
 
-// filter is a helper function used in nodeFilter to obtain a zero-value
+// node is a helper function used in nodeFilter to obtain a zero-value
 // instance of a specific ast.Node implementation.
 // The function argument is not actually called, but used by Go's type inference to determine the type `N`.
 // For example, for `(*Visitor).visitCall` which has the signature
 // type `func(*Visitor, *ast.CallExpr) bool`, `N` is inferred as `*ast.CallExpr`.
 // This allows nodeFilter to specify node types by referencing their corresponding visit methods.
-func filter[N ast.Node](func(*Visitor, N) bool) ast.Node {
+func node[N ast.Node](func(*Visitor, N) bool) ast.Node {
 	var n N
 
 	return n
@@ -107,7 +127,7 @@ func filter[N ast.Node](func(*Visitor, N) bool) ast.Node {
 // visit is the central visitor function called by `inspector.Nodes`.
 // It receives AST nodes during traversal and dispatches them to specific
 // `visit*` methods based on the node type for detailed analysis.
-func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) { //nolint:cyclop
+func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) {
 	if !push {
 		return true // Only process nodes when entering
 	}
@@ -120,6 +140,9 @@ func (v *Visitor) visit(n ast.Node, push bool) (proceed bool) { //nolint:cyclop
 		return v.visitCall(n)
 	case *ast.File:
 		return v.visitFile(n)
+	// keep-sorted end
+
+	// keep-sorted start
 	case *ast.FuncDecl:
 		return v.visitFuncDecl(n)
 	case *ast.StarExpr:

@@ -23,7 +23,7 @@ import (
 
 type myError struct{}
 
-func (*myError) Error() string { // want "\\(zl:err\\)"
+func (*myError) Error() string { // want " \\(zl:err\\)$"
 	return "my error"
 }
 
@@ -47,17 +47,17 @@ func Exported() {
 		fmt.Println("nil")
 	}
 
-	if errors.Is(func() error { // want "\\(zl:cme\\)"
+	if errors.Is(func() error { // want " \\(zl:cme\\)$"
 		return ErrOne
 	}(), ErrTwo) {
 		fmt.Println("equal")
 	}
 
-	if ErrOne == ErrTwo { // want "\\(zl:cmp\\)"
+	if ErrOne == ErrTwo { // want " \\(zl:cmp\\)$"
 		fmt.Println("equal")
 	}
 
-	if ErrOne != ErrTwo { // want "\\(zl:cmp\\)"
+	if ErrOne != ErrTwo { // want " \\(zl:cmp\\)$"
 		fmt.Println("not equal")
 	}
 

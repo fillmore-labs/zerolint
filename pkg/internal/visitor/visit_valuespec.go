@@ -57,7 +57,7 @@ func (v *Visitor) visitValueSpec(n *ast.ValueSpec) bool {
 
 type msgValue struct{}
 
-// zeroMsg returns a message for an unnamed variable pointing to a zero-sized type. This is not possible in Go.
+// zeroMsg would return a message for an unnamed variable pointing to a zero-sized type. This is not possible in Go.
 func (msgValue) zeroMsg(typ types.Type, valueMethod bool) checker.CategorizedMessage {
 	return msgFormatf(catVar, valueMethod, "variable is pointer to zero-sized type %q", typ)
 }

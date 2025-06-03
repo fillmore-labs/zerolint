@@ -18,10 +18,10 @@ package a
 
 type EmptyType struct{}
 
-var _ map[EmptyType]EmptyType // want "\\(zl:typ\\)" "\\(zl:typ\\)"
+var _ map[EmptyType]EmptyType // want " \\(zl:typ\\)$" " \\(zl:typ\\)$"
 
-var _ []EmptyType // want "\\(zl:typ\\)"
+var _ []EmptyType // want " \\(zl:typ\\)$"
 
-func emptyFunc[T EmptyType](_ T) { // want "\\(zl:typ\\)"
-    emptyFunc[EmptyType](EmptyType{}) // want "\\(zl:typ\\)" "\\(zl:add\\)"
+func emptyFunc[T EmptyType](_ T) { // want " \\(zl:typ\\)$"
+    emptyFunc[EmptyType](EmptyType{}) // want " \\(zl:typ\\)$" " \\(zl:add\\)$"
 }

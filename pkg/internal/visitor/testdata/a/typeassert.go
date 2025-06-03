@@ -18,14 +18,14 @@ package a
 
 type (
 	empt  = struct{}
-	pempt = *empt // want "\\(zl:dcl\\)"
+	pempt = *empt // want " \\(zl:dcl\\)$"
 )
 
 func Assert() {
-	var a any = &empt{} // want "\\(zl:add\\)"
-	var b pempt         // want "\\(zl:var\\)"
-	b = a.(pempt)       // want "\\(zl:art\\)"
-	_ = (*empt)(b)      // want "\\(zl:cst\\)"
+	var a any = &empt{} // want " \\(zl:add\\)$"
+	var b pempt         // want " \\(zl:var\\)$"
+	b = a.(pempt)       // want " \\(zl:art\\)$"
+	_ = (*empt)(b)      // want " \\(zl:cst\\)$"
 	_ = b
 
 	var s any = ""

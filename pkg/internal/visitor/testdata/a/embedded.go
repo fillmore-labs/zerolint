@@ -30,4 +30,4 @@ type eError embError
 
 type xError = eError
 
-var _ error = (*xError)(nil) // want "\\(zl:nil\\+\\)"
+var _ error = (*xError)(nil) // want " \\(zl:nil\\+\\)$"

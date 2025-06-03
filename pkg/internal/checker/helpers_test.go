@@ -25,10 +25,9 @@ import (
 	"path"
 	"testing"
 
-	. "fillmore-labs.com/zerolint/pkg/internal/checker"
-	"fillmore-labs.com/zerolint/pkg/internal/filter"
-	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
 	"golang.org/x/tools/go/analysis"
+
+	. "fillmore-labs.com/zerolint/pkg/internal/checker"
 )
 
 // newTestChecker creates a new Checker with a Pass initialized for testing.
@@ -42,7 +41,6 @@ func newTestChecker(tb testing.TB,
 		TypesInfo: info,
 		Fset:      fset,
 		Files:     []*ast.File{currentFile},
-		ResultOf:  map[*analysis.Analyzer]any{excluded.Analyzer: filter.Filter{}},
 	}
 
 	c := New(pass)

@@ -11,17 +11,25 @@ formatters:
 linters:
   default: all
   disable:
+    # keep-sorted start
     - depguard
     - dupl
     - exhaustruct
     - forbidigo
+    - funcorder
     - nonamedreturns
     - varnamelen
     - wrapcheck
+    # keep-sorted end
   settings:
+    # keep-sorted start
+    cyclop:
+      max-complexity: 20
     errcheck:
       exclude-functions:
         - (io/fs.File).Close
+    gocognit:
+      min-complexity: 30
     govet:
       enable-all: true
       disable:
@@ -32,10 +40,6 @@ linters:
         printf:
           funcs:
             - fillmore-labs.com/zerolint/pkg/internal/visitor.msgFormatf
-    testifylint:
-      enable-all: true
-      disable:
-        - require-error
     ireturn:
       allow:
         - anon
@@ -43,10 +47,13 @@ linters:
         - empty
         - stdlib
         - generic
+    mnd:
+      ignored-numbers: ["2", "3", "-1"]
     predeclared:
       ignore: ["new"]
     revive:
       rules:
+        # keep-sorted start
         - name: atomic
         - name: blank-imports
         - name: context-as-argument
@@ -77,6 +84,12 @@ linters:
         - name: unused-parameter
         - name: var-declaration
         - name: var-naming
+          # keep-sorted end
+    testifylint:
+      enable-all: true
+      disable:
+        - require-error
+        # keep-sorted end
   exclusions:
     rules:
       - path: _test\.go$

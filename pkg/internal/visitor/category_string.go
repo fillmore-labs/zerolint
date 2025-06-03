@@ -13,28 +13,29 @@ func _() {
 	_ = x[catArgumentNil-2]
 	_ = x[catCast-3]
 	_ = x[catCastNil-4]
-	_ = x[catComparison-5]
-	_ = x[catComparisonError-6]
-	_ = x[catComparisonInterface-7]
-	_ = x[catDeref-8]
-	_ = x[catError-9]
-	_ = x[catMethodExpression-10]
-	_ = x[catNew-11]
-	_ = x[catParameter-12]
-	_ = x[catReceiver-13]
-	_ = x[catResult-14]
-	_ = x[catReturnNil-15]
-	_ = x[catStarType-16]
-	_ = x[catStructEmbedded-17]
-	_ = x[catStructField-18]
-	_ = x[catTypeAssert-19]
-	_ = x[catTypeDeclaration-20]
-	_ = x[catVar-21]
+	_ = x[catCastUnsafe-5]
+	_ = x[catComparison-6]
+	_ = x[catComparisonError-7]
+	_ = x[catComparisonInterface-8]
+	_ = x[catDeref-9]
+	_ = x[catError-10]
+	_ = x[catMethodExpression-11]
+	_ = x[catNew-12]
+	_ = x[catParameter-13]
+	_ = x[catReceiver-14]
+	_ = x[catResult-15]
+	_ = x[catReturnNil-16]
+	_ = x[catStarType-17]
+	_ = x[catStructEmbedded-18]
+	_ = x[catStructField-19]
+	_ = x[catTypeAssert-20]
+	_ = x[catTypeDeclaration-21]
+	_ = x[catVar-22]
 }
 
-const _category_name = "unkaddargcstnilcmpcmecmidererrmexnewparrcvresrettypembfldartdclvar"
+const _category_name = "unkaddargcstnilcupcmpcmecmidererrmexnewparrcvresrettypembfldartdclvar"
 
-var _category_index = [...]uint8{0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66}
+var _category_index = [...]uint8{0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69}
 
 func (i category) String() string {
 	if i < 0 || i >= category(len(_category_index)-1) {

@@ -37,7 +37,7 @@ func IgnoreErrors() {
 		fmt.Println("nil")
 	}
 
-	var oneErr *typedError[int] // want "\\(zl:var\\)"
+	var oneErr *typedError[int] // want " \\(zl:var\\)$"
 	if errors.As(ErrOne, &oneErr) {
 		fmt.Println("ErrOne is typedError[int]")
 	}
@@ -47,25 +47,44 @@ func IgnoreErrors() {
 		if errors.Is(ErrOne, ErrTwo) {
 			fmt.Println("one is two")
 		}
-		if Is(ErrOne, ErrTwo) { // want "\\(zl:cmp\\)"
+		if Is(ErrOne, ErrTwo) { // want " \\(zl:cmp\\)$"
 			fmt.Println("one is two")
 		}
 	}()
 
-	if xerrors.Is(func() error { // want "\\(zl:cme\\)"
+	if xerrors.Is(func() error { // want " \\(zl:cme\\)$"
 		return ErrOne
 	}(), ErrTwo) {
 		fmt.Println("equal")
 	}
 
-	errors.Is(ErrOne, error(ErrTwo)) // want "\\(zl:cme\\)"
+	_ = errors.Is(ErrOne, error(ErrTwo))                 // want " \\(zl:cme\\)$"
+	_ = errors.Is(error(ErrTwo), &typedError[float64]{}) // want " \\(zl:add\\)$" " \\(zl:cme\\)$"
 
-	var err *typedError[int] // want "\\(zl:var\\)"
+	if errors.Is(ErrOne, &(typedError[int]{})) { // want " \\(zl:cmp\\)$" " \\(zl:add\\)$"
+		fmt.Println("equal")
+	}
+
+	if errors.Is(ErrOne, (new)(typedError[int])) { // want " \\(zl:cmp\\)$" " \\(zl:new\\)$"
+		fmt.Println("equal")
+	}
+
+	a := typedError[int]{}
+	current := func(_, _ int) *typedError[int] { return &typedError[int]{} } // want " \\(zl:res\\)$" " \\(zl:add\\)$"
+	old := func(_ int) *typedError[int] { return &typedError[int]{} }        // want " \\(zl:res\\)$" " \\(zl:add\\)$"
+	new := func(_ int) *typedError[int] { return &typedError[int]{} }        // want " \\(zl:res\\)$" " \\(zl:add\\)$"
+	_ = errors.Is(ErrOne, &a)                                                // want " \\(zl:add\\)$" " \\(zl:cmp\\)$"
+	_ = errors.Is(ErrOne, (current)(0, 0))                                   // want " \\(zl:cmp\\)$"
+	_ = errors.Is(ErrOne, (old)(0))                                          // want " \\(zl:cmp\\)$"
+	_ = errors.Is(ErrOne, (new)(0))                                          // want " \\(zl:cmp\\)$"
+
+	var err *typedError[int] // want " \\(zl:var\\)$"
 	_ = errors.As(ErrOne, &err)
 
 	_ = errors.Join(ErrOne, ErrTwo)
 
 	_ = errors.Unwrap(ErrOne)
 
-	_ = (any)(nil) == ErrOne // want "\\(zl:cmi\\)"
+	_ = (any)(nil) == ErrOne               // want " \\(zl:cmi\\)$"
+	_ = (any)(nil) == &(typedError[int]{}) // want " \\(zl:cmi\\)$" " \\(zl:add\\)$"
 }

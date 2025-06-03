@@ -23,5 +23,5 @@ func TypeParam() {
 
 	_ = &embedded[int]{} == &embedded[int]{}
 
-	_ = &embedded[empty]{} // want "\\(zl:add\\)"
+	_ = &embedded[empty]{} // want " \\(zl:add\\)$"
 }

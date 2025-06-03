@@ -1,7 +1,8 @@
 ---
+# yaml-language-server: $schema=https://json.schemastore.org/pre-commit-config.json
 repos:
   - repo: https://github.com/google/yamlfmt
-    rev: v0.17.0
+    rev: v0.17.1
     hooks:
       - id: yamlfmt
   - repo: https://github.com/google/keep-sorted

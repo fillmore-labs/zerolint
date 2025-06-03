@@ -14,10 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package excluded //nolint:testpackage
+package a
 
-import "testing"
+import "test/a/b"
 
-func Test_excludeFact(*testing.T) {
-	excluded.AFact()
-}
+func Fix1[T any](b.Empty[T]) {} // want " \\(zl:par\\)$"

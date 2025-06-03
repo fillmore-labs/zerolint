@@ -64,7 +64,7 @@ func TestChecker_Qualifier(t *testing.T) { //nolint:funlen
 			setupChecker: func(c *Checker, _ *ast.File) {
 				c.CurrentImports = nil
 			},
-			want: "other",
+			want: "\"example.com/other\"",
 		},
 		{
 			name:           "target imported without alias",
@@ -100,7 +100,7 @@ func TestChecker_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("example.com/other", "other")
 			},
-			want: "other",
+			want: "\"example.com/other\"",
 		},
 		{
 			name:           "target not imported",
@@ -109,7 +109,7 @@ func TestChecker_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("example.com/other", "other")
 			},
-			want: "other",
+			want: "\"example.com/other\"",
 		},
 		{
 			name:           "import path unquote error skips spec",
@@ -126,7 +126,7 @@ func TestChecker_Qualifier(t *testing.T) { //nolint:funlen
 				// If `Value` was just `"malformed/path"` (no quotes), Unquote returns it as is with an error.
 				f.Imports = append(f.Imports, &ast.ImportSpec{Path: &ast.BasicLit{Kind: token.STRING, Value: "malformed/path"}})
 			},
-			want: "skipped", // Falls through to pkg.Name() as the malformed import is skipped
+			want: "\"malformed/path\"", // Falls through to strconv.Quote(pkg.Path()) as the malformed import is skipped
 		},
 	}
 

@@ -19,6 +19,8 @@ package visitor
 import (
 	"go/ast"
 	"go/types"
+
+	"golang.org/x/tools/go/ast/inspector"
 )
 
 type retType struct {
@@ -38,7 +40,27 @@ func (v *Visitor) visitResults(results *ast.FieldList, body *ast.BlockStmt) bool
 		return true
 	}
 
-	ast.Inspect(body, v.inspectBody(returnTypes))
+	c, ok := v.in.Root().FindNode(body)
+	if !ok {
+		return true
+	}
+
+	// inspectBody is a function suitable for [inspector.Cursor] to walk a function body.
+	inspectBody := func(c inspector.Cursor) (descend bool) {
+		switch n := c.Node().(type) {
+		case *ast.FuncLit:
+			// Don't check returns in nested function literals
+			return false
+
+		case *ast.ReturnStmt:
+			// Check for explicit nil returns for zero-sized pointer types.
+			v.visitReturnStmt(n, returnTypes)
+		}
+
+		return true
+	}
+
+	c.Inspect([]ast.Node{(*ast.FuncLit)(nil), (*ast.ReturnStmt)(nil)}, inspectBody)
 
 	return true
 }
@@ -82,26 +104,6 @@ func (v *Visitor) hasZeroSizedPointerReturn(results *ast.FieldList) ([]retType, 
 	return zeroSizedPointerReturn, hasZeroSizedPointer
 }
 
-// inspectBody returns a function suitable for ast.Inspect to walk a function body.
-// It looks for `return` statements to check for explicit nil returns for zero-sized pointer types.
-func (v *Visitor) inspectBody(returnTypes []retType) func(node ast.Node) bool {
-	return func(node ast.Node) bool {
-		switch n := node.(type) {
-		case *ast.FuncLit:
-			// Don't check returns in nested function literals
-			return false
-
-		case *ast.ReturnStmt:
-			v.visitReturnStmt(n, returnTypes)
-
-			return true
-
-		default:
-			return true
-		}
-	}
-}
-
 // visitReturnStmt processes `return` statements within a function body.
 // It checks if any returned expression corresponding to an expected zero-sized pointer type
 // is explicitly 'nil'.
@@ -120,22 +122,15 @@ func (v *Visitor) visitReturnStmt(n *ast.ReturnStmt, returnTypes []retType) {
 
 		tv, ok := v.check.TypesInfo().Types[result]
 		if !ok {
-			continue
+			continue // should not happen
 		}
 
-		switch t := tv.Type.(type) {
-		case *types.Basic:
-			// Check if the returned expression is the identifier 'nil'
-			if t.Kind() == types.UntypedNil {
-				cM := msgFormatf(catReturnNil, returnType.valueMethod,
-					"explicitly returning nil for pointer to zero-sized type %q", returnType.elem)
-				fixes := v.check.ReplaceWithZeroValue(result, returnType.elem)
-				v.check.Report(result, cM, fixes)
-			}
-
-		case *types.Tuple:
-			// Tuples are not handled here. Exiting, since the count is off.
-			return
+		// Check if the returned expression is the identifier 'nil'
+		if tv.IsNil() {
+			cM := msgFormatf(catReturnNil, returnType.valueMethod,
+				"explicitly returning nil for pointer to zero-sized type %q", returnType.elem)
+			fixes := v.check.ReplaceWithZeroValue(result, returnType.elem)
+			v.check.Report(result, cM, fixes)
 		}
 	}
 }

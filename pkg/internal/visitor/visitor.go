@@ -20,6 +20,8 @@ import (
 	"iter"
 	"regexp"
 
+	"golang.org/x/tools/go/ast/inspector"
+
 	"fillmore-labs.com/zerolint/pkg/internal/checker"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"fillmore-labs.com/zerolint/pkg/zerolint/level"
@@ -39,18 +41,23 @@ type Visitor struct {
 	check     checker.Checker
 	level     level.LintLevel
 	generated bool
+	in        *inspector.Inspector
 }
 
 // New creates a new [Visitor] configured with the provided [Options].
 func New(opt Options) *Visitor {
-	return &Visitor{
+	v := &Visitor{
 		check: checker.Checker{
 			Excludes: opt.Excludes,
-			Regex:    opt.Regex,
 		},
 		level:     opt.Level,
 		generated: opt.Generated,
 	}
+	if opt.Regex != nil && opt.Regex.String() != "" {
+		v.check.Regex = opt.Regex
+	}
+
+	return v
 }
 
 // HasDetected tells whether any zero-sized types have been detected during analysis.

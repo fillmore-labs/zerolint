@@ -31,7 +31,7 @@ func (c *Checker) Report(rng analysis.Range, msg CategorizedMessage, fixes []ana
 		End:            rng.End(),
 		Category:       msg.Category,
 		Message:        msg.Message,
-		URL:            "", // "https://blog.fillmore-labs.com/posts/zerolint" + "#" + msg.Category,
 		SuggestedFixes: fixes,
+		// URL:            "https://blog.fillmore-labs.com/posts/zerolint" + "#" + msg.Category,
 	})
 }

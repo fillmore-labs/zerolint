@@ -16,7 +16,10 @@
 
 package checker_test
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestChecker_TypesInfo(t *testing.T) {
 	t.Parallel()
@@ -35,7 +38,9 @@ func TestChecker_Print(t *testing.T) {
 	info, pkg, fset, astFile := parseSource(t, "main.go", "package main")
 	c := newTestChecker(t, info, pkg, fset, astFile)
 
-	err := c.Print(astFile)
+	var buf bytes.Buffer
+
+	err := c.Fprint(&buf, astFile)
 	if err != nil {
 		t.Errorf("Got error %v printing test file", err)
 	}

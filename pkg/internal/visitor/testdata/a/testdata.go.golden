@@ -22,27 +22,27 @@ func Exported() {
 	var x [0]string
 	var y [0]string
 
-	_ = struct{}{} // want "\\(zl:new\\)"
+	_ = struct{ _ [0]func() }{} // want " \\(zl:new\\)$"
 
 	type empty struct{}
-	_ = empty{} // want "\\(zl:new\\)"
+	_ = empty{} // want " \\(zl:new\\)$"
 
-	xp, yp := x, y // want "\\(zl:add\\)" "\\(zl:add\\)"
+	xp, yp := x, y // want " \\(zl:add\\)$" " \\(zl:add\\)$"
 
-	_ = xp // want "\\(zl:der\\)"
+	_ = xp // want " \\(zl:der\\)$"
 
-	if xp == yp { // want "\\(zl:cmp\\)"
+	if xp == yp { // want " \\(zl:cmp\\)$"
 		fmt.Println("equal")
 	}
 
-	if xp != yp { // want "\\(zl:cmp\\)"
+	if xp != yp { // want " \\(zl:cmp\\)$"
 		fmt.Println("not equal")
 	}
 
-	_, _ = any(xp).(([0]string)) // want "\\(zl:art\\)"
+	_, _ = any(xp).(([0]string)) // want " \\(zl:art\\)$"
 
 	switch any(xp).(type) {
-	case ([0]string): // want "\\(zl:art\\)"
+	case ([0]string): // want " \\(zl:art\\)$"
 	case string:
 	}
 }

@@ -16,19 +16,19 @@
 
 package a
 
-import c "go.test/a/b"
+import c "test/a/b"
 
-func ReturnsNil() (*int, *c.Empty[int]) { // want "\\(zl:res\\)"
-	return nil, &c.Empty[int]{} // want "\\(zl:add\\)"
+func ReturnsNil() (*int, *c.Empty[int]) { // want " \\(zl:res\\)$"
+	return nil, &c.Empty[int]{} // want " \\(zl:add\\)$"
 }
 
-func ReturnsNil2() (*int, *c.Empty[int]) { // want "\\(zl:res\\)"
+func ReturnsNil2() (*int, *c.Empty[int]) { // want " \\(zl:res\\)$"
 	r := 1
-	return &r, nil // want "\\(zl:ret\\)"
+	return &r, nil // want " \\(zl:ret\\)$"
 }
 
-func ReturnsNil3() (*c.Empty[int], *xError) { // want "\\(zl:res\\)" "\\(zl:res\\+\\)"
-	return func() (*c.Empty[int], *xError) { // want "\\(zl:res\\)" "\\(zl:res\\+\\)"
-		return (nil), nil // want "\\(zl:ret\\)" "\\(zl:ret\\+\\)"
+func ReturnsNil3() (*c.Empty[int], *xError) { // want " \\(zl:res\\)$" " \\(zl:res\\+\\)$"
+	return func() (*c.Empty[int], *xError) { // want " \\(zl:res\\)$" " \\(zl:res\\+\\)$"
+		return (nil), nil // want " \\(zl:ret\\)$" " \\(zl:ret\\+\\)$"
 	}()
 }

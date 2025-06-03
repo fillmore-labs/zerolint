@@ -31,7 +31,7 @@ func TestTestify(t *testing.T) {
 
 	require.ErrorIs(t, ErrOne, nil)
 
-	var oneErr *typedError[int] // want "\\(zl:var\\)"
+	var oneErr *typedError[int] // want " \\(zl:var\\)$"
 	if assert.ErrorAs(t, ErrOne, &oneErr) {
 		fmt.Println("ErrOne is typedError[int]")
 	}

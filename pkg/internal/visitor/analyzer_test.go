@@ -21,14 +21,15 @@ import (
 	"slices"
 	"testing"
 
-	"fillmore-labs.com/zerolint/pkg/internal/excludes"
-	"fillmore-labs.com/zerolint/pkg/internal/passes/excluded"
-	"fillmore-labs.com/zerolint/pkg/internal/set"
-	. "fillmore-labs.com/zerolint/pkg/internal/visitor"
-	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/analysistest"
 	"golang.org/x/tools/go/analysis/passes/inspect"
+
+	"fillmore-labs.com/zerolint/pkg/internal/excludes"
+	"fillmore-labs.com/zerolint/pkg/internal/passes/exclusions"
+	"fillmore-labs.com/zerolint/pkg/internal/set"
+	. "fillmore-labs.com/zerolint/pkg/internal/visitor"
+	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
 func TestAnalyzer(t *testing.T) {
@@ -51,8 +52,9 @@ func TestAnalyzer(t *testing.T) {
 		args args
 		want string
 	}{
-		{"basic", args{Options{}, "go.test/basic"}, "go.test/basic.myError (value methods)"},
-		{"full", args{Options{Level: level.Full, Excludes: set.New(excludedTypeNames...)}, "go.test/a"}, "[0]string"},
+		{"basic", args{Options{Level: level.Basic}, "test/basic"}, "test/basic.myError (value methods)"},
+		{"full", args{Options{Level: level.Full, Excludes: set.New(excludedTypeNames...)}, "test/a"}, "[0]string"},
+		{"exclusions", args{Options{Level: level.Full}, "test/e"}, ""},
 	}
 	for _, tt := range tests {
 		v := New(tt.args.options)
@@ -61,7 +63,7 @@ func TestAnalyzer(t *testing.T) {
 			Name:     "zerolint",
 			Doc:      "...",
 			Run:      v.Run,
-			Requires: []*analysis.Analyzer{inspect.Analyzer, excluded.Analyzer},
+			Requires: []*analysis.Analyzer{inspect.Analyzer, exclusions.Analyzer},
 		}
 
 		t.Run(tt.name, func(t *testing.T) {

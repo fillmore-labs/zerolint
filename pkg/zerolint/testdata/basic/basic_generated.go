@@ -20,6 +20,6 @@ package basic
 
 type generated struct{}
 
-func (*generated) Error() string { // want "\\(zl:err\\)"
+func (*generated) Error() string { // want " \\(zl:err\\)$"
 	return "an error"
 }

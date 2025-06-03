@@ -14,14 +14,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package a
+package e
 
-import "runtime/cgo"
+import "test/e/f"
 
-var _ cgo.Incomplete // want "IS excluded"
+var (
+	_ *Excluded
 
-var _ cgo.Handle // want "IS NOT excluded"
+	_ *Excluded2
 
-type _Ctype_something struct{}
+	_ *NotExcluded // want " \\(zl:var\\)$"
 
-var _ _Ctype_something // want "IS excluded"
+	_ *f.Excluded
+
+	_ *f.Excluded2
+
+	_ *f.NotExcluded // want " \\(zl:var\\)$"
+)

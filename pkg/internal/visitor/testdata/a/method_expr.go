@@ -18,8 +18,8 @@ package a
 
 type m1 struct{}
 
-func (m *m1) f(n *m1) (*m1, *m1) { return m, n } // want "\\(zl:rcv\\)" "\\(zl:par\\)" "\\(zl:res\\)" "\\(zl:res\\)"
+func (m *m1) f(n *m1) (*m1, *m1) { return m, n } // want " \\(zl:rcv\\)$" " \\(zl:par\\)$" " \\(zl:res\\)$" " \\(zl:res\\)$"
 
-var _, _ = (*m1).f(&m1{}, &m1{}) // want "\\(zl:mex\\)" "\\(zl:add\\)" "\\(zl:add\\)"
+var _, _ = (*m1).f(&m1{}, &m1{}) // want " \\(zl:mex\\)$" " \\(zl:add\\)$" " \\(zl:add\\)$"
 
-var _, _ = (*m1).f(nil, nil) // want "\\(zl:mex\\)" "\\(zl:arg\\)"  "\\(zl:arg\\)"
+var _, _ = (*m1).f(nil, nil) // want " \\(zl:mex\\)$" " \\(zl:arg\\)$"  " \\(zl:arg\\)$"

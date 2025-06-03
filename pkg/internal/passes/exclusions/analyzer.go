@@ -14,27 +14,23 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package excluded
+package exclusions
 
 import (
 	"reflect"
 
-	"fillmore-labs.com/zerolint/pkg/internal/filter"
 	"golang.org/x/tools/go/analysis"
 )
-
-// zerolintMarker is the prefix for zerolint directives in comments ("zerolint:exclude").
-const zerolintMarker = "zerolint:"
 
 // Analyzer provides information about which types should be excluded from further analysis
 // by other passes in the zerolint toolchain.
 var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
-	Name:             "excluded",
+	Name:             "exclusions",
 	Doc:              "determine type exclusions for later passes",
-	URL:              "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/internal/passes/excluded",
+	URL:              "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/internal/passes/exclusions",
 	Run:              run,
 	RunDespiteErrors: true,
 
-	FactTypes:  []analysis.Fact{(*excludeFact)(nil)},
-	ResultType: reflect.TypeFor[filter.Filter](),
+	FactTypes:  []analysis.Fact{(*excludedFact)(nil)},
+	ResultType: reflect.TypeFor[exclusionsResult](),
 }

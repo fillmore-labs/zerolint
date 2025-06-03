@@ -23,7 +23,7 @@ import (
 
 // visitTypeSpec analyzes type declarations to detect if they explicitly declare types as pointers to zero-sized types.
 func (v *Visitor) visitTypeSpec(n *ast.TypeSpec) bool {
-	if isCtype(n.Name.Name) {
+	if isCtype(n) {
 		return false // cgo types are often opaque
 	}
 
@@ -38,7 +38,9 @@ func (v *Visitor) visitTypeSpec(n *ast.TypeSpec) bool {
 	return true
 }
 
-func isCtype(name string) bool {
-	// Heuristic to avoid issues with cgo types like _Ctype_struct_foo
-	return strings.HasPrefix(name, "_Ctype_")
+// isCtype is a heuristic to avoid issues with cgo types like _Ctype_struct_foo.
+func isCtype(ts *ast.TypeSpec) bool {
+	const cgoTypePrefix = "_Ctype_"
+
+	return strings.HasPrefix(ts.Name.Name, cgoTypePrefix)
 }

@@ -4,4 +4,4 @@ coverage:
     project: false
     patch: false
 ignore:
-  - main.go
+  - "*.go"
