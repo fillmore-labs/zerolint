@@ -36,14 +36,18 @@ func (d *Diag) ReplaceWithZeroValue(n ast.Node, t types.Type) []analysis.Suggest
 		return nil
 	}
 
-	var (
-		needsImport bool
-		buf         bytes.Buffer
-	)
+	q := Qualifier{
+		Pkg: d.pass.Pkg,
+	}
 
-	types.WriteType(&buf, t, d.Qualifier(&needsImport))
+	if d.CurrentFile != nil {
+		q.Imports = d.CurrentFile.Imports
+	}
 
-	if needsImport {
+	var buf bytes.Buffer
+	types.WriteType(&buf, t, q.Qualifier)
+
+	if q.NeedsImport {
 		return nil
 	}
 

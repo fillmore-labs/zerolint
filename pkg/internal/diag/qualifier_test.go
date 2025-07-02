@@ -25,7 +25,7 @@ import (
 	. "fillmore-labs.com/zerolint/pkg/internal/diag"
 )
 
-func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
+func TestQualifier_Qualifier(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	tests := []struct {
@@ -33,27 +33,25 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 		currentPkgPath    string
 		currentFileSrc    string
 		targetPkgProvider func(currentPkg *types.Package) *types.Package
-		setupDiag         func(r *Diag, f *ast.File) // Optional setup, e.g., for malformed imports
+		importsProvider   func(f *ast.File) []*ast.ImportSpec
 		needsImport       bool
 		want              string
 	}{
 		{
-			name:           "target package is nil",
-			currentPkgPath: "example.com/main",
-			currentFileSrc: `package main`,
-			targetPkgProvider: func(_ *types.Package) *types.Package {
-				return nil
-			},
-			want: "",
+			name:              "target package is nil",
+			currentPkgPath:    "example.com/main",
+			currentFileSrc:    `package main`,
+			targetPkgProvider: func(_ *types.Package) *types.Package { return nil },
+			importsProvider:   func(f *ast.File) []*ast.ImportSpec { return f.Imports },
+			want:              "",
 		},
 		{
-			name:           "target package is current package",
-			currentPkgPath: "example.com/main",
-			currentFileSrc: `package main`,
-			targetPkgProvider: func(currentPkg *types.Package) *types.Package {
-				return currentPkg
-			},
-			want: "",
+			name:              "target package is current package",
+			currentPkgPath:    "example.com/main",
+			currentFileSrc:    `package main`,
+			targetPkgProvider: func(currentPkg *types.Package) *types.Package { return currentPkg },
+			importsProvider:   func(f *ast.File) []*ast.ImportSpec { return f.Imports },
+			want:              "",
 		},
 		{
 			name:           "target not imported (no imports in file)",
@@ -62,8 +60,9 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("example.com/other", "other")
 			},
-			needsImport: true,
-			want:        "\"example.com/other\"",
+			importsProvider: func(f *ast.File) []*ast.ImportSpec { return f.Imports },
+			needsImport:     true,
+			want:            "\"example.com/other\"",
 		},
 		{
 			name:           "target imported without alias",
@@ -72,7 +71,8 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("example.com/other", "otherpkgname") // Name() should be used
 			},
-			want: "otherpkgname",
+			importsProvider: func(f *ast.File) []*ast.ImportSpec { return f.Imports },
+			want:            "otherpkgname",
 		},
 		{
 			name:           "target imported with alias",
@@ -81,7 +81,8 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("example.com/other", "other")
 			},
-			want: "custom",
+			importsProvider: func(f *ast.File) []*ast.ImportSpec { return f.Imports },
+			want:            "custom",
 		},
 		{
 			name:           "target imported with dot import",
@@ -90,7 +91,8 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("example.com/other", "other")
 			},
-			want: "",
+			importsProvider: func(f *ast.File) []*ast.ImportSpec { return f.Imports },
+			want:            "",
 		},
 		{
 			name:           "target imported with underscore import",
@@ -99,8 +101,9 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("example.com/other", "other")
 			},
-			needsImport: true,
-			want:        "\"example.com/other\"",
+			importsProvider: func(f *ast.File) []*ast.ImportSpec { return f.Imports },
+			needsImport:     true,
+			want:            "\"example.com/other\"",
 		},
 		{
 			name:           "target not imported",
@@ -109,8 +112,9 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("example.com/other", "other")
 			},
-			needsImport: true,
-			want:        "\"example.com/other\"",
+			importsProvider: func(f *ast.File) []*ast.ImportSpec { return f.Imports },
+			needsImport:     true,
+			want:            "\"example.com/other\"",
 		},
 		{
 			name:           "import path unquote error skips spec",
@@ -119,29 +123,18 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 			targetPkgProvider: func(_ *types.Package) *types.Package {
 				return types.NewPackage("malformed/path", "skipped")
 			},
-			setupDiag: func(_ *Diag, f *ast.File) {
+			importsProvider: func(f *ast.File) []*ast.ImportSpec {
 				// Manually add an import spec with a path that strconv.Unquote would fail on if it wasn't already quoted.
 				// Forcing a direct error from strconv.Unquote is tricky as parser usually creates valid string literals.
 				// This simulates a scenario where i.Path.Value is not a valid quoted string.
 				// A real AST from a parser would have `Value: "\"malformed/path\""`.
 				// If `Value` was just `"malformed/path"` (no quotes), Unquote returns it as is with an error.
 				f.Imports = append(f.Imports, &ast.ImportSpec{Path: &ast.BasicLit{Kind: token.STRING, Value: "malformed/path"}})
+
+				return f.Imports
 			},
 			needsImport: true,
 			want:        "\"malformed/path\"", // Falls through to strconv.Quote(pkg.Path()) as the malformed import is skipped
-		},
-		{
-			name:           "current file is nil",
-			currentPkgPath: "example.com/main",
-			currentFileSrc: `package main`, // Source doesn't matter here
-			targetPkgProvider: func(_ *types.Package) *types.Package {
-				return types.NewPackage("example.com/other", "other")
-			},
-			setupDiag: func(d *Diag, _ *ast.File) {
-				d.CurrentFile = nil
-			},
-			needsImport: true,
-			want:        "\"example.com/other\"",
 		},
 	}
 
@@ -149,24 +142,29 @@ func TestDiag_Qualifier(t *testing.T) { //nolint:funlen
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			currentPkg, fset, currentASTFile := parseSourceImports(t, tt.currentPkgPath, tt.currentFileSrc)
-			info := &types.Info{} // Minimal info, not used by Qualifier method
+			currentPkg, _, currentASTFile := parseSourceImports(t, tt.currentPkgPath, tt.currentFileSrc)
 
-			d := newTestDiag(t, info, currentPkg, fset, currentASTFile)
-			if tt.setupDiag != nil {
-				tt.setupDiag(d, currentASTFile)
+			q := Qualifier{
+				Pkg:     currentPkg,
+				Imports: tt.importsProvider(currentASTFile),
 			}
 
 			targetPkgToQualify := tt.targetPkgProvider(currentPkg)
-			needsImport := false
-			got := d.Qualifier(&needsImport)(targetPkgToQualify)
+			got := q.Qualifier(targetPkgToQualify)
 
-			if needsImport != tt.needsImport {
-				t.Errorf("Qualifier(%s) needsImport %t, want %t", targetPkgToQualify.Path(), needsImport, tt.needsImport)
+			var targetPkgPath string
+			if targetPkgToQualify == nil {
+				targetPkgPath = "<nil>"
+			} else {
+				targetPkgPath = targetPkgToQualify.Path()
+			}
+
+			if q.NeedsImport != tt.needsImport {
+				t.Errorf("Qualifier(%s) needsImport %t, want %t", targetPkgPath, q.NeedsImport, tt.needsImport)
 			}
 
 			if got != tt.want {
-				t.Errorf("Qualifier(%s) = %q, want %q", targetPkgToQualify.Path(), got, tt.want)
+				t.Errorf("Qualifier(%s) = %q, want %q", targetPkgPath, got, tt.want)
 			}
 		})
 	}

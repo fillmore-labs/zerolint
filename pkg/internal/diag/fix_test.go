@@ -19,6 +19,7 @@ package diag_test
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
 	"strings"
 	"testing"
@@ -26,7 +27,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-func TestDiag_ReplaceWithZeroValue(t *testing.T) {
+func TestDiag_ReplaceWithZeroValue(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	tests := []struct {
@@ -59,6 +60,23 @@ func TestDiag_ReplaceWithZeroValue(t *testing.T) {
 				return nodeToReplace, zeroValueType
 			},
 			expectedNewText: "MyArray{}",
+		},
+		{
+			name: "type from unimported package",
+			src:  "package testpkg\nvar p int\nvar _ = p",
+			findNodeAndType: func(f *ast.File, _ *types.Package, _ *types.Info) (ast.Node, types.Type) {
+				valSpec := f.Decls[1].(*ast.GenDecl).Specs[0].(*ast.ValueSpec) // var _ = p
+				nodeToReplace := valSpec.Values[0]                             // p
+
+				// Create a type from another package that is not imported.
+				otherPkg := types.NewPackage("example.com/other", "other")
+				typeName := types.NewTypeName(token.NoPos, otherPkg, "OtherStruct", nil)
+				namedType := types.NewNamed(typeName, types.NewStruct(nil, nil), nil)
+				otherPkg.Scope().Insert(typeName)
+
+				return nodeToReplace, namedType
+			},
+			expectNilFix: true, // Should be nil because the import is missing.
 		},
 		{
 			name: "unsupported type (pointer) for zero value literal",

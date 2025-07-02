@@ -29,10 +29,6 @@ type exclusionsResult struct {
 	facts []analysis.ObjectFact
 }
 
-func newResult(pass *analysis.Pass) exclusionsResult {
-	return exclusionsResult{facts: pass.AllObjectFacts()}
-}
-
 // ErrNoExclusionsResult is returned when the [Analyzer]s result is missing from the [analysis.Pass].
 var ErrNoExclusionsResult = errors.New("result of exclusions.Analyzer missing")
 

@@ -16,7 +16,8 @@
 
 package exclusions
 
-type excludedFact struct{} //zerolint:exclude // Marker type ony
+//zerolint:exclude // Marker type ony
+type excludedFact struct{}
 
 // AFact makes *excludeFact satisfy the [analysis.Fact] interface.
 // [analysis.Fact]s must be pointers to be exported as a fact.

@@ -17,6 +17,7 @@
 package exclusions
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -27,30 +28,34 @@ import (
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 )
 
+type calc analysis.Pass
+
 // CalculateExclusions performs the analysis to identify excluded types.
 // It retrieves exclusion facts from the dedicated exclusions pass and
 // adds types excluded via the "//zerolint:exclude" comment on "var _ Type" declarations.
 func CalculateExclusions(pass *analysis.Pass) (set.Set[token.Pos], error) {
+	c := (*calc)(pass)
+
 	excludedTypeDefs, err := ResultOf(pass)
 	if err != nil {
 		return nil, err
 	}
 
-	for genDecl := range AllDecl[*ast.GenDecl](pass.Files) {
+	for genDecl := range AllDecl[*ast.GenDecl](c.Files) {
 		switch genDecl.Tok { //nolint:exhaustive
 		case token.TYPE:
 			// Check for misplaced comments on the spec.
-			lintSpecs(pass, genDecl)
+			c.lintSpecs(genDecl)
 
 		case token.VAR:
 			// Exclude all via "//zerolint:exclude" comment on the declaration block.
 			if HasExcludeComment(genDecl.Doc) {
 				// Process the spec to find the type to exclude.
-				processExcludedValueSpec(pass, genDecl, excludedTypeDefs)
+				c.processExcludedValueSpec(genDecl, excludedTypeDefs)
 			}
 
 			// Check for misplaced comments on the spec.
-			lintSpecs(pass, genDecl)
+			c.lintSpecs(genDecl)
 
 		default: // ignore import or const
 		}
@@ -62,7 +67,7 @@ func CalculateExclusions(pass *analysis.Pass) (set.Set[token.Pos], error) {
 
 // processExcludedValueSpec handles a ValueSpec within a "//zerolint:exclude" var block.
 // It expects the pattern `var _ Type` and adds 'Type' to the excluded set.
-func processExcludedValueSpec(pass *analysis.Pass, genDecl *ast.GenDecl, excludedTypeDefs set.Set[token.Pos]) {
+func (c *calc) processExcludedValueSpec(genDecl *ast.GenDecl, excludedTypeDefs set.Set[token.Pos]) {
 	for _, genSpec := range genDecl.Specs {
 		spec, ok := genSpec.(*ast.ValueSpec)
 		if !ok { // should not happen
@@ -75,7 +80,7 @@ func processExcludedValueSpec(pass *analysis.Pass, genDecl *ast.GenDecl, exclude
 
 		// Check for "_" identifier
 		if len(spec.Names) != 1 || id.Name != "_" {
-			pass.Report(analysis.Diagnostic{
+			c.Report(analysis.Diagnostic{
 				Pos:     spec.Pos(),
 				End:     spec.End(),
 				Message: "Only one \"_\" identifier admissible (zl:com)",
@@ -86,7 +91,7 @@ func processExcludedValueSpec(pass *analysis.Pass, genDecl *ast.GenDecl, exclude
 
 		// Check for spec.Type and no spec.Values
 		if spec.Type == nil || len(spec.Values) > 0 {
-			pass.Report(analysis.Diagnostic{
+			c.Report(analysis.Diagnostic{
 				Pos:     spec.Pos(),
 				End:     spec.End(),
 				Message: "One type name and no expressions are required (zl:com)",
@@ -96,7 +101,7 @@ func processExcludedValueSpec(pass *analysis.Pass, genDecl *ast.GenDecl, exclude
 		}
 
 		// Look up the type definition
-		def, ok := pass.TypesInfo.Defs[id]
+		def, ok := c.TypesInfo.Defs[id]
 		if !ok { // should not happen
 			log.Printf("Internal error: can't find value type definition (zl:xxx)")
 
@@ -112,8 +117,12 @@ func processExcludedValueSpec(pass *analysis.Pass, genDecl *ast.GenDecl, exclude
 			tn = t.Obj()
 
 		default:
-			ts := types.TypeString(t, types.RelativeTo(pass.Pkg))
-			pass.ReportRangef(spec, "Expected type name, got %q (zl:com)", ts)
+			ts := types.TypeString(t, types.RelativeTo(c.Pkg))
+			c.Report(analysis.Diagnostic{
+				Pos:     spec.Pos(),
+				End:     spec.End(),
+				Message: fmt.Sprintf("Expected type name, got %q (zl:com)", ts),
+			})
 
 			continue
 		}
@@ -123,13 +132,13 @@ func processExcludedValueSpec(pass *analysis.Pass, genDecl *ast.GenDecl, exclude
 }
 
 // lintSpecs analyzes a GenDecl to ensure exclude comments are correctly positioned on the declaration block.
-func lintSpecs(pass *analysis.Pass, genDecl *ast.GenDecl) {
+func (c *calc) lintSpecs(genDecl *ast.GenDecl) {
 	for _, spec := range genDecl.Specs {
 		switch spec := spec.(type) {
 		case *ast.TypeSpec:
 			if HasExcludeComment(spec.Doc) || HasExcludeComment(spec.Comment) {
 				// Comment should be on the declaration block, not the type spec.
-				pass.Report(analysis.Diagnostic{
+				c.Report(analysis.Diagnostic{
 					Pos:     spec.Pos(),
 					End:     spec.End(),
 					Message: "Exclude types with comment before the \"type\" keyword (zl:com)",
@@ -139,7 +148,7 @@ func lintSpecs(pass *analysis.Pass, genDecl *ast.GenDecl) {
 		case *ast.ValueSpec:
 			if HasExcludeComment(spec.Doc) || HasExcludeComment(spec.Comment) {
 				// Comment should be on the declaration block, not the value spec.
-				pass.Report(analysis.Diagnostic{
+				c.Report(analysis.Diagnostic{
 					Pos:     spec.Pos(),
 					End:     spec.End(),
 					Message: "Exclude types with comment before the \"var\" keyword (zl:com)",

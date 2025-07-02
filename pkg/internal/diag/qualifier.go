@@ -22,27 +22,30 @@ import (
 	"strconv"
 )
 
+// Qualifier holds the current package and imports for [Qualifier.Qualifier].
+type Qualifier struct {
+	Pkg         *types.Package
+	Imports     []*ast.ImportSpec
+	NeedsImport bool
+}
+
 // Qualifier returns the package name or alias to use when referring to the given package
-// in the context of the currently analyzed file (whose imports are in c.CurrentImports).
-func (d *Diag) Qualifier(needsImport *bool) func(pkg *types.Package) string {
-	return func(pkg *types.Package) string {
-		if pkg == nil || pkg == d.pass.Pkg {
-			return ""
-		}
-
-		if d.CurrentFile != nil {
-			for _, i := range d.CurrentFile.Imports {
-				if qualifier, ok := importName(i, pkg); ok {
-					return qualifier
-				}
-			}
-		}
-
-		*needsImport = true
-
-		// Not imported - default to quoted path, breaking the build in an informative way.
-		return strconv.Quote(pkg.Path())
+// in the context of the currently analyzed file (whose imports are in q.Imports).
+func (q *Qualifier) Qualifier(pkg *types.Package) string {
+	if pkg == nil || pkg == q.Pkg {
+		return ""
 	}
+
+	for _, i := range q.Imports {
+		if qualifier, ok := importName(i, pkg); ok {
+			return qualifier
+		}
+	}
+
+	q.NeedsImport = true
+
+	// Not imported - default to quoted path, breaking the build in an informative way.
+	return strconv.Quote(pkg.Path())
 }
 
 // importName extracts the qualifier for a given package from a single import spec.

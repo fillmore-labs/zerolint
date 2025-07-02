@@ -26,21 +26,27 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+type pass analysis.Pass
+
 // run performs the analysis to identify excluded types.
 // It exports an [excludedFact] fact for each newly identified excluded type in the current package.
-func run(pass *analysis.Pass) (any, error) {
-	addExclusions(pass)
+func (p *pass) run() (any, error) {
+	p.addExclusions()
 
-	for decl := range AllDecl[*ast.GenDecl](pass.Files) {
+	for decl := range AllDecl[*ast.GenDecl](p.Files) {
 		if decl.Tok == token.TYPE {
-			processTypeDecl(pass, decl)
+			p.processTypeDecl(decl)
 		}
 	}
 
-	return newResult(pass), nil
+	return p.newResult(), nil
 }
 
-func processTypeDecl(pass *analysis.Pass, genDecl *ast.GenDecl) {
+func (p *pass) newResult() exclusionsResult {
+	return exclusionsResult{facts: p.AllObjectFacts()}
+}
+
+func (p *pass) processTypeDecl(genDecl *ast.GenDecl) {
 	// Exclude all via "//zerolint:exclude" comment on the declaration block.
 	excludeAll := HasExcludeComment(genDecl.Doc)
 
@@ -56,7 +62,7 @@ func processTypeDecl(pass *analysis.Pass, genDecl *ast.GenDecl) {
 			continue
 		}
 
-		def := pass.TypesInfo.Defs[spec.Name]
+		def := p.TypesInfo.Defs[spec.Name]
 		tn, ok := def.(*types.TypeName)
 
 		if !ok { // should not happen
@@ -65,7 +71,7 @@ func processTypeDecl(pass *analysis.Pass, genDecl *ast.GenDecl) {
 			continue
 		}
 
-		excludeType(pass, tn)
+		p.excludeType(tn)
 	}
 }
 
@@ -77,15 +83,15 @@ func isCtype(ts *ast.TypeSpec) bool {
 }
 
 // excludeType exports an exclusion fact for the given object identifier.
-func excludeType(pass *analysis.Pass, tn *types.TypeName) {
-	pass.ExportObjectFact(tn, (*excludedFact)(nil))
+func (p *pass) excludeType(tn *types.TypeName) {
+	p.ExportObjectFact(tn, &excludedFact{})
 }
 
 // addExclusions prefills hard coded type definitions.
 // For example, it ignores [runtime.Func] because pointers to this type represent opaque
 // runtime-internal data, not zero-sized types the linter targets.
-func addExclusions(pass *analysis.Pass) {
-	pkg := pass.Pkg
+func (p *pass) addExclusions() {
+	pkg := p.Pkg
 
 	var typeNames []string
 
@@ -108,7 +114,7 @@ func addExclusions(pass *analysis.Pass) {
 	scope := pkg.Scope()
 	for _, name := range typeNames {
 		if tn, ok := scope.Lookup(name).(*types.TypeName); ok {
-			pass.ExportObjectFact(tn, (*excludedFact)(nil))
+			p.excludeType(tn)
 		}
 	}
 }
