@@ -21,6 +21,7 @@ import (
 	"go/types"
 	"strings"
 
+	"golang.org/x/tools/go/ast/edge"
 	"golang.org/x/tools/go/ast/inspector"
 
 	"fillmore-labs.com/zerolint/pkg/internal/analyzer/msg"
@@ -29,15 +30,21 @@ import (
 )
 
 // visitFuncDecl examines method declarations with pointer receivers to zero-sized types.
-func (v *visitor) visitFuncDecl(c inspector.Cursor, n *ast.FuncDecl) bool {
+func (v *Visitor) visitFuncDecl(c inspector.Cursor, n *ast.FuncDecl) bool {
 	if isCfunc(n.Name.Name) {
 		return false
 	}
 
 	v.visitFuncRecv(n)
 
-	if v.level.AtLeast(level.Extended) {
-		v.checkReturns(c, n.Body, n.Type.Results)
+	if n.Body == nil {
+		return true
+	}
+
+	if v.Level.AtLeast(level.Extended) {
+		b := c.ChildAt(edge.FuncDecl_Body, -1)
+
+		v.checkReturns(b, n.Type)
 	}
 
 	return true
@@ -56,26 +63,28 @@ func isCfunc(name string) bool {
 // Special handling applies to:
 //   - Error() methods: Always checked and reported.
 //   - Lock()/Unlock() methods: Star removal is not suggested.
-func (v *visitor) visitFuncRecv(n *ast.FuncDecl) {
+func (v *Visitor) visitFuncRecv(n *ast.FuncDecl) {
 	if n.Recv == nil || len(n.Recv.List) != 1 {
 		return // Skip non-methods.
 	}
 
 	p := n.Recv.List[0].Type
-	r := v.diag.TypesInfo().TypeOf(p)
+	r := v.Diag.TypesInfo().TypeOf(p)
 
-	elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(r)
+	elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(r)
 	if !zeroSized {
 		return
 	}
 
+	isErr := isErrorDecl(v.Diag.TypesInfo(), n)
+
 	var cM diag.CategorizedMessage
 
 	switch {
-	case v.isError(n):
+	case isErr:
 		cM = msg.Formatf(msg.CatError, valueMethod, "error interface implemented on pointer to zero-sized type %q", elem)
 
-	case v.level.Below(level.Extended):
+	case v.Level.Below(level.Extended):
 		return
 
 	case isLock(n, elem):
@@ -96,26 +105,39 @@ func (v *visitor) visitFuncRecv(n *ast.FuncDecl) {
 	}
 
 	fixes := v.removeStar(p)
-	v.diag.Report(p, cM, fixes)
+	v.Diag.Report(p, cM, fixes)
 }
 
-// isError determines if the given function declaration represents an implementation
-// of the error interface's Error() method by checking both its name and signature.
-func (v *visitor) isError(n *ast.FuncDecl) bool {
-	if n.Name.Name != errorFunc.Name() {
-		return false
+// isErrorDecl checks if a function declaration has the signature of the standard
+// error interface's Error method, which is `Error() string`.
+// It uses the type information from a successful type-check to resolve the return type.
+func isErrorDecl(info *types.Info, funcdecl *ast.FuncDecl) bool {
+	const errorMethodName = "Error"
+
+	recv := funcdecl.Recv
+	if recv == nil || len(recv.List) != 1 || len(recv.List[0].Names) > 1 {
+		return false // Not a method
 	}
 
-	def := v.diag.TypesInfo().Defs[n.Name]
-	fn, ok := def.(*types.Func)
-
-	if !ok { // should not happen
-		v.diag.LogErrorf(n, "expected *types.Func, got %T", def)
-
-		return false
+	name := funcdecl.Name.Name
+	if name != errorMethodName {
+		return false // Wrong name
 	}
 
-	return types.Identical(fn.Type(), errorFunc.Type())
+	return hasErrorSig(info, funcdecl.Type)
+}
+
+func hasErrorSig(info *types.Info, sig *ast.FuncType) bool {
+	if sig.Params.NumFields() > 0 || sig.Results.NumFields() != 1 {
+		return false // Wrong number of parameters / results
+	}
+
+	restype := types.Unalias(info.Types[sig.Results.List[0].Type].Type)
+	if b, basic := restype.(*types.Basic); !basic || b.Kind() != types.String {
+		return false // Wrong result type
+	}
+
+	return true
 }
 
 // isLock determines if the function declaration represents a Lock or Unlock

@@ -24,22 +24,22 @@ import (
 )
 
 // visitUnary checks expressions in form &x.
-func (v *visitor) visitUnary(n *ast.UnaryExpr) bool {
+func (v *Visitor) visitUnary(n *ast.UnaryExpr) bool {
 	if n.Op != token.AND {
 		return true
 	}
 
 	// &...
-	t := v.diag.TypesInfo().TypeOf(n.X)
+	t := v.Diag.TypesInfo().TypeOf(n.X)
 
-	valueMethod, zeroSized := v.check.ZeroSizedType(t)
+	valueMethod, zeroSized := v.Check.ZeroSizedType(t)
 	if !zeroSized {
 		return true
 	}
 
 	cM := msg.Formatf(msg.CatAddress, valueMethod, "address of zero-size variable of type %q", t)
-	fixes := v.diag.RemoveOp(n, n.X)
-	v.diag.Report(n, cM, fixes)
+	fixes := v.Diag.RemoveOp(n, n.X)
+	v.Diag.Report(n, cM, fixes)
 
 	return len(fixes) == 0
 }

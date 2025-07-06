@@ -26,7 +26,7 @@ import (
 
 // visitCmp analyzes comparison expressions (x == y, x != y, errors.Is(x, y)) for comparisons
 // involving pointers to zero-sized types.
-func (v *visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
+func (v *Visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 	var (
 		left, right operandInfo
 		ok          bool
@@ -57,7 +57,7 @@ func (v *visitor) visitCmp(n ast.Node, x, y ast.Expr) bool {
 		return true
 	}
 
-	v.diag.Report(n, cM, nil)
+	v.Diag.Report(n, cM, nil)
 
 	// no fixes, so dive deeper.
 	return true
@@ -71,15 +71,15 @@ type operandInfo struct {
 
 // operandInfo extracts type information about comparison operands,
 // identifying whether they are pointers to zero-sized types or interfaces.
-func (v *visitor) operandInfo(x ast.Expr) (operandInfo, bool) {
-	tv := v.diag.TypesInfo().Types[x]
+func (v *Visitor) operandInfo(x ast.Expr) (operandInfo, bool) {
+	tv := v.Diag.TypesInfo().Types[x]
 	if tv.IsNil() {
 		return operandInfo{}, false // comparisons to nil are not flagged
 	}
 
 	t := tv.Type.Underlying()
 
-	if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
+	if elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(t); zeroSized {
 		return operandInfo{
 			zeroSizedPointer: true,
 			valueMethod:      valueMethod,

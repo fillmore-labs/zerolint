@@ -97,7 +97,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		msg := "IS NOT excluded"
-		if excludedTypeDefs.Has(tn.Pos()) {
+		if excludedTypeDefs.Contains(tn.Pos()) {
 			msg = "IS excluded"
 		}
 

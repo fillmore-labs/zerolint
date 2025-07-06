@@ -17,12 +17,16 @@
 package zerolint
 
 import (
+	"fmt"
 	"reflect"
+	"regexp"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 
+	"fillmore-labs.com/zerolint/pkg/internal/excludes"
 	"fillmore-labs.com/zerolint/pkg/internal/passes/exclusions"
+	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"fillmore-labs.com/zerolint/pkg/zerolint/result"
 )
 
@@ -54,15 +58,50 @@ func New(opts ...Option) *analysis.Analyzer {
 		requires = []*analysis.Analyzer{inspect.Analyzer}
 	}
 
-	return &analysis.Analyzer{
+	a := &analysis.Analyzer{
 		Name: Name,
 		Doc:  Doc,
 		URL:  URL,
-
-		Flags: o.flags(),
-		Run:   o.run,
+		Run:  o.run,
 
 		Requires:   requires,
 		ResultType: reflect.TypeFor[result.Detected](),
 	}
+
+	if o.withFlags {
+		if o.regex == nil {
+			o.regex = &regexp.Regexp{}
+		}
+
+		// Use programmatic options as defaults for flags.
+		a.Flags.TextVar(&o.level, "level", o.level, "analysis level (Default, Extended, Full)")
+		a.Flags.TextVar(o.regex, "match", o.regex, "only check types matching this regex, useful with -fix")
+		a.Flags.Func("excluded", "read excluded types from this file", o.readExcludedFile)
+		a.Flags.BoolVar(&o.zeroTrace, "zerotrace", o.zeroTrace, "trace found zero-sized types")
+		a.Flags.BoolVar(&o.generated, "generated", o.generated, "check generated files")
+	}
+
+	return a
+}
+
+func (o *options) readExcludedFile(name string) error {
+	if name == "" {
+		return nil
+	}
+
+	// If the -excluded flag was provided, amend programmatic excludes.
+	excludedTypeNames, err := excludes.ReadExcludes(osFS{}, name)
+	if err != nil {
+		return fmt.Errorf("error handling -excluded flag: %w", err)
+	}
+
+	if o.excludes == nil {
+		o.excludes = set.New[string]()
+	}
+
+	for _, e := range excludedTypeNames {
+		o.excludes.Add(e)
+	}
+
+	return nil
 }

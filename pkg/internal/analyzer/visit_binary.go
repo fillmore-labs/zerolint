@@ -22,7 +22,7 @@ import (
 )
 
 // visitBinary checks for equality (==) and inequality (!=) comparisons in binary expressions.
-func (v *visitor) visitBinary(n *ast.BinaryExpr) bool {
+func (v *Visitor) visitBinary(n *ast.BinaryExpr) bool {
 	// Only process equality and inequality operations.
 	if n.Op != token.EQL && n.Op != token.NEQ {
 		return true

@@ -19,14 +19,15 @@ package analyzer
 import (
 	"go/ast"
 
-	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
 // dispatch is the central visitor function called by `inspector.Nodes`.
 // It receives AST nodes during traversal and dispatches them to specific
 // `visit*` methods based on the node type for detailed analysis.
-func (v *visitor) dispatch(c inspector.Cursor) (proceed bool) {
+func (v *Visitor) dispatch(c inspector.Cursor) (proceed bool) {
 	switch n := c.Node().(type) {
 	// keep-sorted start
 	case *ast.BinaryExpr:
@@ -67,7 +68,7 @@ func (v *visitor) dispatch(c inspector.Cursor) (proceed bool) {
 	// keep-sorted end
 
 	default: // should not happen
-		v.diag.LogErrorf(n, "Unexpected dispatch type %T", n)
+		v.Diag.LogErrorf(n, "Unexpected dispatch type %T", n)
 
 		return true
 	}
@@ -75,42 +76,42 @@ func (v *visitor) dispatch(c inspector.Cursor) (proceed bool) {
 
 // nodeFilter determines which AST node types to inspect based on the Visitor's configuration
 // (e.g., `level` flag).
-func (v *visitor) nodeFilter() []ast.Node {
+func (v *Visitor) nodeFilter() []ast.Node {
 	var nodes []ast.Node
 
 	switch {
-	case v.level.AtLeast(level.Full):
+	case v.Level.AtLeast(level.Full):
 		// Node types are included at `full` level to perform a complete analysis.
 		nodes = append(nodes,
 			// keep-sorted start ignore_prefixes=nodeN,nodeC
-			nodeN((*visitor).visitFuncType),
-			nodeN((*visitor).visitTypeAssert),
-			nodeN((*visitor).visitTypeSwitch),
-			nodeN((*visitor).visitUnary),
+			nodeN((*Visitor).visitFuncType),
+			nodeN((*Visitor).visitTypeAssert),
+			nodeN((*Visitor).visitTypeSwitch),
+			nodeN((*Visitor).visitUnary),
 			// keep-sorted end
 		)
 
 		fallthrough
 
-	case v.level.AtLeast(level.Extended):
+	case v.Level.AtLeast(level.Extended):
 		// Less node types are included at `extended` level to perform a more lenient analysis.
 		nodes = append(nodes,
 			// keep-sorted start ignore_prefixes=nodeN,nodeC
-			nodeC((*visitor).visitFuncLit),
-			nodeN((*visitor).visitValueSpec),
+			nodeC((*Visitor).visitFuncLit),
+			nodeN((*Visitor).visitValueSpec),
 			// keep-sorted end
 		)
 
 		fallthrough
 
-	case v.level.AtLeast(level.Basic):
+	case v.Level.AtLeast(level.Basic):
 		// Basic analysis at the default level.
 		nodes = append(nodes,
 			// keep-sorted start ignore_prefixes=nodeN,nodeC
-			nodeC((*visitor).visitFuncDecl),
-			nodeN((*visitor).visitStar),
-			nodeN((*visitor).visitStructType),
-			nodeN((*visitor).visitTypeSpec),
+			nodeC((*Visitor).visitFuncDecl),
+			nodeN((*Visitor).visitStar),
+			nodeN((*Visitor).visitStructType),
+			nodeN((*Visitor).visitTypeSpec),
 			// keep-sorted end
 		)
 
@@ -120,9 +121,9 @@ func (v *visitor) nodeFilter() []ast.Node {
 		// Minimal analysis, not configurable.
 		nodes = append(nodes,
 			// keep-sorted start ignore_prefixes=nodeN,nodeC
-			nodeN((*visitor).visitBinary),
-			nodeN((*visitor).visitCall),
-			nodeN((*visitor).visitFile),
+			nodeN((*Visitor).visitBinary),
+			nodeN((*Visitor).visitCall),
+			nodeN((*Visitor).visitFile),
 			// keep-sorted end
 		)
 	}
@@ -136,14 +137,14 @@ func (v *visitor) nodeFilter() []ast.Node {
 // For example, for `(*Visitor).visitCall` which has the signature
 // type `func(*Visitor, *ast.CallExpr) bool`, `N` is inferred as `*ast.CallExpr`.
 // This allows nodeFilter to specify node types by referencing their corresponding visit methods.
-func nodeN[N ast.Node](func(*visitor, N) bool) ast.Node {
+func nodeN[N ast.Node](func(*Visitor, N) bool) ast.Node {
 	var n N
 
 	return n
 }
 
 // nodeC is a helper function, see [nodeN].
-func nodeC[N ast.Node](func(*visitor, inspector.Cursor, N) bool) ast.Node {
+func nodeC[N ast.Node](func(*Visitor, inspector.Cursor, N) bool) ast.Node {
 	var n N
 
 	return n

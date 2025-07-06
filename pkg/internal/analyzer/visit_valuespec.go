@@ -25,19 +25,19 @@ import (
 
 // visitValueSpec analyzes variable declarations (`var` or `const` specs)
 // to detect if they explicitly declare variables as pointers to zero-sized types.
-func (v *visitor) visitValueSpec(n *ast.ValueSpec) bool {
+func (v *Visitor) visitValueSpec(n *ast.ValueSpec) bool {
 	if n.Type == nil {
 		return true
 	}
 
-	t, ok := v.diag.TypesInfo().Types[n.Type]
+	t, ok := v.Diag.TypesInfo().Types[n.Type]
 	if !ok { // should not happen
-		v.diag.LogErrorf(n, "Can't find variable declaration type")
+		v.Diag.LogErrorf(n, "Can't find variable declaration type")
 
 		return true
 	}
 
-	elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t.Type)
+	elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(t.Type)
 	if !zeroSized {
 		return true
 	}
@@ -52,7 +52,7 @@ func (v *visitor) visitValueSpec(n *ast.ValueSpec) bool {
 
 	cM := msg.FormatMessage(msg.Value{}, elem, valueMethod, n.Names)
 	fixes := v.removeStar(n.Type)
-	v.diag.Report(n, cM, fixes)
+	v.Diag.Report(n, cM, fixes)
 
 	return true
 }

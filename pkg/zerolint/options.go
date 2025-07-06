@@ -21,31 +21,27 @@ import (
 	"log"
 	"log/slog"
 	"regexp"
-	"sync"
 
-	"fillmore-labs.com/zerolint/pkg/internal/analyzer"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
 	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
 // options defines configurable parameters for the linter.
 type options struct {
-	analyzer        analyzer.Options
+	level           level.LintLevel
+	excludes        set.Set[string]
+	generated       bool
+	regex           *regexp.Regexp
 	logger          *log.Logger
 	zeroTrace       bool
 	withFlags       bool
 	excludeComments bool
-	excludedFile    string
-	excludeRead     sync.Once
-	excludeReadErr  error
 }
 
 // defaultOptions returns a [options] struct initialized with default values.
 func defaultOptions() *options {
 	return &options{ // Default options
-		analyzer: analyzer.Options{
-			Level: level.Basic,
-		},
+		level:           level.Basic,
 		logger:          log.Default(),
 		excludeComments: true,
 	}
@@ -108,7 +104,7 @@ func (o levelOption) key() string {
 }
 
 func (o levelOption) apply(opts *options) {
-	opts.analyzer.Level = o.level
+	opts.level = o.level
 }
 
 // WithExcludes is an [Option] to configure the excluded types.
@@ -130,12 +126,12 @@ func (o excludesOption) key() string {
 }
 
 func (o excludesOption) apply(opts *options) {
-	if opts.analyzer.Excludes == nil {
-		opts.analyzer.Excludes = set.New[string]()
+	if opts.excludes == nil {
+		opts.excludes = set.New[string]()
 	}
 
 	for _, exclude := range o.excludes {
-		opts.analyzer.Excludes.Insert(exclude)
+		opts.excludes.Add(exclude)
 	}
 }
 
@@ -180,7 +176,7 @@ func (o generatedOption) key() string {
 }
 
 func (o generatedOption) apply(opts *options) {
-	opts.analyzer.Generated = o.generated
+	opts.generated = o.generated
 }
 
 // WithRegex is an [Option] to configure detecting only matching types.
@@ -207,7 +203,7 @@ func (o reOption) key() string {
 }
 
 func (o reOption) apply(opts *options) {
-	opts.analyzer.Regex = o.re
+	opts.regex = o.re
 }
 
 // WithLogger is an [Option] to configure the used logger.

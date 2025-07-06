@@ -105,7 +105,7 @@ func (c *Checker) trackType(typeName string, vM bool) {
 
 // Filter out type name by user-specified excludes or regex.
 func (c *Checker) isExcluded(typeName string) bool {
-	return c.Excludes.Has(typeName) || c.Regex != nil && !c.Regex.MatchString(typeName)
+	return c.Excludes.Contains(typeName) || c.Regex != nil && !c.Regex.MatchString(typeName)
 }
 
 // isIgnored checks if a type should be ignored by the zero-size analysis
@@ -156,6 +156,8 @@ func IsZeroSized(t types.Type) bool {
 	for budget := maxIterations; budget > 0 && len(stack) > 0; budget-- {
 		top := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
+
+		// We could check for excluded *[types.Named] or *[types.Alias] here.
 
 		switch u := top.Underlying().(type) {
 		case *types.Array:

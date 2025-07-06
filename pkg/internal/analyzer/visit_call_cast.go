@@ -28,9 +28,9 @@ import (
 // visitCast checks for type casts:
 // - nil to pointers of zero-sized types, like (*struct{})(nil).
 // - casts of pointers of zero-sized types to [unsafe.Pointer], like unsafe.Pointer(&struct{}{}).
-func (v *visitor) visitCast(n *ast.CallExpr, t types.Type) bool {
+func (v *Visitor) visitCast(n *ast.CallExpr, t types.Type) bool {
 	if len(n.Args) != 1 { // should not happen
-		v.diag.LogErrorf(n, "Expected one argument, got %d", len(n.Args))
+		v.Diag.LogErrorf(n, "Expected one argument, got %d", len(n.Args))
 
 		return true
 	}
@@ -39,33 +39,33 @@ func (v *visitor) visitCast(n *ast.CallExpr, t types.Type) bool {
 
 	// Check for unsafe.Pointer(arg)
 	if b, ok := t.(*types.Basic); ok && b.Kind() == types.UnsafePointer {
-		tv, ok := v.diag.TypesInfo().Types[arg]
+		tv, ok := v.Diag.TypesInfo().Types[arg]
 		if !ok { // should not happen
-			v.diag.LogErrorf(arg, "Can't find unsafe cast type")
+			v.Diag.LogErrorf(arg, "Can't find unsafe cast type")
 
 			return true
 		}
 
-		elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(tv.Type)
+		elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(tv.Type)
 		if !zeroSized {
 			return true // Not a pointer to a zero-sized type.
 		}
 
 		cM := msg.Formatf(msg.CatCastUnsafe, valueMethod, "cast of pointer to zero-size type %q to unsafe.Pointer", elem)
-		v.diag.Report(n, cM, nil)
+		v.Diag.Report(n, cM, nil)
 
 		return false
 	}
 
 	// Check for t(arg) with t being a pointer to a zero-sized type
-	elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t)
+	elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(t)
 	if !zeroSized {
 		return true // Not a pointer to a zero-sized type.
 	}
 
-	tv, ok := v.diag.TypesInfo().Types[arg]
+	tv, ok := v.Diag.TypesInfo().Types[arg]
 	if !ok { // should not happen
-		v.diag.LogErrorf(arg, "Can't find cast type")
+		v.Diag.LogErrorf(arg, "Can't find cast type")
 
 		return true
 	}
@@ -75,10 +75,10 @@ func (v *visitor) visitCast(n *ast.CallExpr, t types.Type) bool {
 
 		var fixes []analysis.SuggestedFix
 		if s, ok := ast.Unparen(n.Fun).(*ast.StarExpr); ok {
-			fixes = v.diag.MakePure(n, s.X)
+			fixes = v.Diag.MakePure(n, s.X)
 		}
 
-		v.diag.Report(n, cM, fixes)
+		v.Diag.Report(n, cM, fixes)
 
 		return false // Don't descend into `nil`
 	}
@@ -86,7 +86,7 @@ func (v *visitor) visitCast(n *ast.CallExpr, t types.Type) bool {
 	cM := msg.Formatf(msg.CatCast, valueMethod,
 		"cast of expression of type %q to pointer to zero-size type %q", tv.Type, elem)
 	fixes := v.removeStar(n.Fun)
-	v.diag.Report(n, cM, fixes)
+	v.Diag.Report(n, cM, fixes)
 
 	return true // Descend into the argument expression
 }

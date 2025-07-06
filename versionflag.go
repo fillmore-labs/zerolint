@@ -23,12 +23,8 @@ import (
 	"runtime/debug"
 )
 
-// versionFlag represents a [flag] to print version information and exit the program.
-type versionFlag struct{}
-
-func (versionFlag) IsBoolFlag() bool { return true }
-func (versionFlag) String() string   { return "true" }
-func (versionFlag) Set(_ string) error {
+// version represents a [flag] to print version information and exit the program.
+func version(string) error {
 	progname, err := os.Executable()
 	if err != nil {
 		return err

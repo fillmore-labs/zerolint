@@ -39,10 +39,10 @@ func Exported() {
 		fmt.Println("not equal")
 	}
 
-	_, _ = any(xp).(([0]string)) // want " \\(zl:art\\)$"
+	_, _ = any(xp).(([0]string)) // want " \\(zl:ast\\)$"
 
 	switch any(xp).(type) {
-	case ([0]string): // want " \\(zl:art\\)$"
+	case ([0]string): // want " \\(zl:ast\\)$"
 	case string:
 	}
 }

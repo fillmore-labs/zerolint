@@ -28,6 +28,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/inspect"
 
 	. "fillmore-labs.com/zerolint/pkg/internal/analyzer"
+	"fillmore-labs.com/zerolint/pkg/internal/checker"
 	"fillmore-labs.com/zerolint/pkg/internal/excludes"
 	"fillmore-labs.com/zerolint/pkg/internal/passes/exclusions"
 	"fillmore-labs.com/zerolint/pkg/internal/set"
@@ -35,7 +36,7 @@ import (
 	"fillmore-labs.com/zerolint/pkg/zerolint/result"
 )
 
-func TestAnalyzer(t *testing.T) {
+func TestAnalyzer(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
 	dir := analysistest.TestData()
@@ -46,8 +47,11 @@ func TestAnalyzer(t *testing.T) {
 	}
 
 	type args struct {
-		options Options
-		pkg     string
+		level     level.LintLevel
+		excludes  set.Set[string]
+		generated bool
+		regex     *regexp.Regexp
+		pkg       string
 	}
 
 	testre := regexp.MustCompile("^test/.*$")
@@ -57,21 +61,32 @@ func TestAnalyzer(t *testing.T) {
 		args args
 		want string
 	}{
-		{"basic", args{Options{Level: level.Basic, Regex: testre}, "test/basic"}, "test/basic.myError (value methods)"},
-		{"full", args{Options{Level: level.Full, Excludes: set.New(excludedTypeNames...)}, "test/a"}, "[0]string"},
-		{"exclusions", args{Options{Level: level.Full}, "test/e"}, ""},
+		{"basic", args{level: level.Basic, regex: testre, pkg: "test/basic"}, "test/basic.myError (value methods)"},
+		{"full", args{level: level.Full, excludes: set.New(excludedTypeNames...), pkg: "test/a"}, "[0]string"},
+		{"exclusions", args{level: level.Full, pkg: "test/e"}, ""},
 	}
 	for _, tt := range tests {
-		a := &analysis.Analyzer{
-			Name:       "zerolint",
-			Doc:        "...",
-			Run:        tt.args.options.Run,
-			Requires:   []*analysis.Analyzer{inspect.Analyzer, exclusions.Analyzer},
-			ResultType: reflect.TypeFor[result.Detected](),
-		}
-
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
+			v := &Visitor{
+				Check: checker.Checker{
+					Excludes: tt.args.excludes,
+				},
+				Level:     tt.args.level,
+				Generated: tt.args.generated,
+			}
+			if tt.args.regex != nil && tt.args.regex.String() != "" {
+				v.Check.Regex = tt.args.regex
+			}
+
+			a := &analysis.Analyzer{
+				Name:       "zerolint",
+				Doc:        "...",
+				Run:        v.Run,
+				Requires:   []*analysis.Analyzer{inspect.Analyzer, exclusions.Analyzer},
+				ResultType: reflect.TypeFor[result.Detected](),
+			}
 
 			res := analysistest.RunWithSuggestedFixes(t, dir, a, tt.args.pkg)
 

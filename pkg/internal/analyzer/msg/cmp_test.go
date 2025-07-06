@@ -90,7 +90,7 @@ func TestComparisonMessagePointerInterface(t *testing.T) {
 	structType := types.NewStruct(nil, nil)
 	pkg := types.NewPackage("test", "test")
 	namedStructType := types.NewNamed(types.NewTypeName(token.NoPos, pkg, "MyStruct", nil), structType, nil)
-	errorInterface := types.Universe.Lookup("error").Type()
+	errorType := types.Universe.Lookup("error").Type()
 	emptyInterface := types.NewInterfaceType(nil, nil)
 
 	testCases := []struct {
@@ -103,7 +103,7 @@ func TestComparisonMessagePointerInterface(t *testing.T) {
 		{
 			name:        "with error interface",
 			elemOp:      structType,
-			interfaceOp: errorInterface,
+			interfaceOp: errorType,
 			valueMethod: false,
 			want:        `comparison of pointer to zero-size type "struct{}" with error interface`,
 		},
@@ -117,7 +117,7 @@ func TestComparisonMessagePointerInterface(t *testing.T) {
 		{
 			name:        "named type with error interface",
 			elemOp:      namedStructType,
-			interfaceOp: errorInterface,
+			interfaceOp: errorType,
 			valueMethod: false,
 			want:        `comparison of pointer to zero-size type "test.MyStruct" with error interface`,
 		},

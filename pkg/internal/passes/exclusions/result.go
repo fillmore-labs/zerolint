@@ -29,6 +29,10 @@ type exclusionsResult struct {
 	facts []analysis.ObjectFact
 }
 
+func (p pass) newResult() exclusionsResult {
+	return exclusionsResult{facts: p.AllObjectFacts()}
+}
+
 // ErrNoExclusionsResult is returned when the [Analyzer]s result is missing from the [analysis.Pass].
 var ErrNoExclusionsResult = errors.New("result of exclusions.Analyzer missing")
 
@@ -41,8 +45,8 @@ func ResultOf(pass *analysis.Pass) (set.Set[token.Pos], error) {
 	}
 
 	excludedTypeDefs := set.New[token.Pos]()
-	for _, fact := range excludedResult.facts {
-		excludedTypeDefs.Insert(fact.Object.Pos())
+	for obj := range AllFacts[*excludedFact](excludedResult.facts) {
+		excludedTypeDefs.Add(obj.Pos())
 	}
 
 	return excludedTypeDefs, nil

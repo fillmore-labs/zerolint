@@ -23,17 +23,17 @@ import (
 )
 
 // visitTypeAssert analyzes type assertions x.(T).
-func (v *visitor) visitTypeAssert(n *ast.TypeAssertExpr) bool {
+func (v *Visitor) visitTypeAssert(n *ast.TypeAssertExpr) bool {
 	x := n.Type
 	if x == nil { // type switch
 		return true
 	}
 
-	t := v.diag.TypesInfo().TypeOf(x)
-	if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
+	t := v.Diag.TypesInfo().TypeOf(x)
+	if elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(t); zeroSized {
 		cM := msg.Formatf(msg.CatTypeAssert, valueMethod, "type assert to pointer to zero-size variable of type %q", elem)
 		fixes := v.removeStar(x)
-		v.diag.Report(n, cM, fixes)
+		v.Diag.Report(n, cM, fixes)
 	}
 
 	return true

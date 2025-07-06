@@ -28,7 +28,7 @@ type Ety = struct{}
 
 func Check(x any) {
 	switch x.(type) {
-	case GB[Ety]: // want " \\(zl:art\\)$"
+	case GB[Ety]: // want " \\(zl:ast\\)$"
 		fmt.Println("*GB[Ety]")
 	}
 

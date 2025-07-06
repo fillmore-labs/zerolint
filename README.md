@@ -161,7 +161,7 @@ instances based on their pointer values.
 #### Pitfalls of Zero-Sized Pointer Comparisons
 
 Internally, Go's runtime optimizes allocations of zero-sized types. It achieves this by
-[returning a pointer to a common static variable](https://cs.opensource.google/go/go/+/refs/tags/go1.24.4:src/runtime/malloc.go;l=1017-1020)
+[returning a pointer to a common static variable](https://cs.opensource.google/go/go/+/refs/tags/go1.24.6:src/runtime/malloc.go;l=1017-1020)
 (known as `runtime.zerobase`) rather than allocating new memory on the heap for each instance. A consequence of this
 optimization is that different pointers to zero-sized types (e.g., multiple uses of `&DivisionByZeroError{}` or
 `new(DivisionByZeroError)`) end up pointing to the same memory address. This can create the illusion that such pointers
@@ -311,10 +311,18 @@ type definition:
 
 ```go
 //zerolint:exclude
-type MyIntentionalZeroSizedPointerType struct{}
+type MyIntentionalZeroSizedType struct{}
 ```
 
-This comment will tell `zerolint` to ignore any pointer-related issues for `MyIntentionalZeroSizedPointerType`.
+This comment will tell `zerolint` to ignore any issues for `MyIntentionalZeroSizedType`.
+
+To exclude a type defined in an external package, you can declare the exclusion in your own package using a `var`
+declaration with the blank identifier (`_`):
+
+```go
+//zerolint:exclude
+var _ external.ZeroSizedType
+```
 
 Using these exclusion methods allows you to tailor `zerolint`'s behavior to your project's specific needs.
 
@@ -376,7 +384,7 @@ represents a variable of that zero-sized type (e.g., `var zsv zst`).
 ### Full Level
 
 - **zl:add**: Address of zero-size variable (`&zsv`)
-- **zl:art**: Type assert to pointer to zero-size variable (`var a any; a.(*zst)`)
+- **zl:ast**: Type assert to pointer to zero-size variable (`var a any; a.(*zst)`)
 - **zl:typ**: Pointer to zero-sized type (`map[string]*zst`)
 - **zl:arg**: Passing explicit nil as parameter pointing to zero-sized type (`func f(*zst); f(nil)`)
 - **zl:par**: Function parameter points to zero-sized type (`func f(*zst)`)

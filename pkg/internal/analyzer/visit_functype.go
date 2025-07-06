@@ -23,7 +23,7 @@ import (
 )
 
 // visitFuncType examines function types for parameters and results that are pointers to zero-sized types.
-func (v *visitor) visitFuncType(n *ast.FuncType) bool {
+func (v *Visitor) visitFuncType(n *ast.FuncType) bool {
 	v.checkFieldList(n.Params, false, msg.Param{})
 
 	if n.Results != nil {

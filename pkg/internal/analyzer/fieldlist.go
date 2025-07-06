@@ -28,17 +28,17 @@ import (
 // If skipNamed is true, it will skip fields with names (useful for examining only embedded types in structs).
 // The msgFormatter provides context-specific messages based on whether the current context involves struct fields,
 // function parameters, or function results.
-func (v *visitor) checkFieldList(n *ast.FieldList, skipNamed bool, formatter msg.Formatter) {
+func (v *Visitor) checkFieldList(n *ast.FieldList, skipNamed bool, formatter msg.Formatter) {
 	for _, field := range n.List {
 		if skipNamed && len(field.Names) > 0 {
 			continue // check only embedded types
 		}
 
-		t := v.diag.TypesInfo().TypeOf(field.Type)
-		if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
+		t := v.Diag.TypesInfo().TypeOf(field.Type)
+		if elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(t); zeroSized {
 			cM := msg.FormatMessage(formatter, elem, valueMethod, field.Names)
 			fixes := v.removeStar(field.Type)
-			v.diag.Report(field, cM, fixes)
+			v.Diag.Report(field, cM, fixes)
 		}
 	}
 }

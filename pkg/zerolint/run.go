@@ -17,29 +17,39 @@
 package zerolint
 
 import (
-	"flag"
-	"fmt"
-	"regexp"
+	"errors"
 
 	"golang.org/x/tools/go/analysis"
 
-	"fillmore-labs.com/zerolint/pkg/internal/excludes"
-	"fillmore-labs.com/zerolint/pkg/internal/set"
+	"fillmore-labs.com/zerolint/pkg/internal/analyzer"
+	"fillmore-labs.com/zerolint/pkg/internal/checker"
 	"fillmore-labs.com/zerolint/pkg/zerolint/result"
 )
+
+// ErrNoInspectorResult is returned when the ast inspector is missing.
+var ErrNoInspectorResult = errors.New("zerolint: inspector result missing")
 
 // run is the function that executes an analysis pass using the provided options.
 // If zero-sized types are detected and zeroTrace is enabled, the function logs the detected types.
 func (o *options) run(pass *analysis.Pass) (any, error) {
-	// Avoid re-reading the excluded file for every package
-	if o.excludeRead.Do(o.readExcludedFile); o.excludeReadErr != nil {
-		return nil, o.excludeReadErr
+	v := &analyzer.Visitor{
+		Check: checker.Checker{
+			Excludes: o.excludes,
+		},
+		Level:     o.level,
+		Generated: o.generated,
+	}
+	if o.regex != nil && o.regex.String() != "" {
+		v.Check.Regex = o.regex
 	}
 
-	res, err := o.analyzer.Run(pass)
+	res, err := v.Run(pass)
+	if err != nil {
+		return nil, err
+	}
 
 	d, ok := res.(result.Detected)
-	if ok && err == nil && o.zeroTrace && o.logger != nil && !d.Empty() {
+	if ok && o.zeroTrace && o.logger != nil && !d.Empty() {
 		o.logger.Printf("Found zero-sized types in %q:\n", pass.Pkg.Path())
 
 		for _, name := range d.Sorted() {
@@ -47,52 +57,5 @@ func (o *options) run(pass *analysis.Pass) (any, error) {
 		}
 	}
 
-	return res, err
-}
-
-func (o *options) readExcludedFile() {
-	if o.excludedFile == "" {
-		return
-	}
-
-	// If the -excluded flag was provided, amend programmatic excludes.
-	excludedTypeNames, err := excludes.ReadExcludes(osFS{}, o.excludedFile)
-	if err != nil {
-		o.excludeReadErr = fmt.Errorf("error handling -excluded flag: %w", err)
-
-		return
-	}
-
-	if o.analyzer.Excludes == nil {
-		o.analyzer.Excludes = set.New[string]()
-	}
-
-	for _, e := range excludedTypeNames {
-		o.analyzer.Excludes.Insert(e)
-	}
-}
-
-// flags returns a [flag.FlagSet] containing command-line flags that can
-// configure the analyzer's behavior. These flags correspond to the fields
-// in the [options] struct.
-// The analysis driver uses the returned FlagSet to pass command-line
-// arguments to the analyzer.
-func (o *options) flags() flag.FlagSet {
-	var flags flag.FlagSet
-	if !o.withFlags {
-		return flags
-	}
-
-	if o.analyzer.Regex == nil {
-		o.analyzer.Regex = &regexp.Regexp{}
-	}
-
-	// Use programmatic options as defaults for flags.
-	flags.TextVar(&o.analyzer.Level, "level", o.analyzer.Level, "analysis level (Default, Extended, Full)")
-	flags.TextVar(o.analyzer.Regex, "match", o.analyzer.Regex, "only check types matching this regex, useful with -fix")
-	flags.StringVar(&o.excludedFile, "excluded", o.excludedFile, "read excluded types from this file")
-	flags.BoolVar(&o.zeroTrace, "zerotrace", o.zeroTrace, "trace found zero-sized types")
-	flags.BoolVar(&o.analyzer.Generated, "generated", o.analyzer.Generated, "check generated files")
-
-	return flags
+	return d, nil
 }

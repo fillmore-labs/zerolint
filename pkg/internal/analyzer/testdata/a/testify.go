@@ -31,6 +31,9 @@ func TestTestify(t *testing.T) {
 
 	require.ErrorIs(t, ErrOne, nil)
 
+	assert.ErrorIs(t, ErrOne, error(ErrTwo))                 // want " \\(zl:cme\\)$"
+	(*assert.Assertions).ErrorIs(nil, ErrOne, error(ErrTwo)) // want " \\(zl:cme\\)$"
+
 	var oneErr *typedError[int] // want " \\(zl:var\\)$"
 	if assert.ErrorAs(t, ErrOne, &oneErr) {
 		fmt.Println("ErrOne is typedError[int]")

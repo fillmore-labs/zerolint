@@ -24,7 +24,7 @@ type (
 func Assert() {
 	var a any = empt{} // want " \\(zl:add\\)$"
 	var b pempt        // want " \\(zl:var\\)$"
-	b = a.(pempt)      // want " \\(zl:art\\)$"
+	b = a.(pempt)      // want " \\(zl:ast\\)$"
 	_ = (empt)(b)      // want " \\(zl:cst\\)$"
 	_ = b
 

@@ -25,7 +25,7 @@ import (
 func main() {
 	a := zerolint.New(zerolint.WithFlags(true))
 	if a.Flags.Lookup("V") == nil {
-		a.Flags.Var(versionFlag{}, "V", "print version and exit")
+		a.Flags.BoolFunc("V", "print version and exit", version)
 	}
 
 	singlechecker.Main(a)

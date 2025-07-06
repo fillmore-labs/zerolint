@@ -23,7 +23,7 @@ import (
 )
 
 // visitBuiltin examines calls to new(T), where T is a zero-sized type.
-func (v *visitor) visitBuiltin(n *ast.CallExpr) bool {
+func (v *Visitor) visitBuiltin(n *ast.CallExpr) bool {
 	if len(n.Args) != 1 {
 		return true
 	}
@@ -34,16 +34,16 @@ func (v *visitor) visitBuiltin(n *ast.CallExpr) bool {
 	}
 
 	arg := n.Args[0] // new(arg).
-	argType := v.diag.TypesInfo().TypeOf(arg)
+	argType := v.Diag.TypesInfo().TypeOf(arg)
 
-	valueMethod, zeroSized := v.check.ZeroSizedType(argType)
+	valueMethod, zeroSized := v.Check.ZeroSizedType(argType)
 	if !zeroSized {
 		return true
 	}
 
 	cM := msg.Formatf(msg.CatNew, valueMethod, "new called on zero-sized type %q", argType)
-	fixes := v.diag.MakePure(n, arg)
-	v.diag.Report(n, cM, fixes)
+	fixes := v.Diag.MakePure(n, arg)
+	v.Diag.Report(n, cM, fixes)
 
 	return len(fixes) == 0
 }

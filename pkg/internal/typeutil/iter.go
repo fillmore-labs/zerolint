@@ -14,35 +14,24 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package a
+package typeutil
 
-import "fmt"
+import (
+	"go/ast"
+	"iter"
+)
 
-func Exported() {
-	var x [0]string
-	var y [0]string
-
-	_ = (new)(struct{ _ [0]func() }) // want " \\(zl:new\\)$"
-
-	type empty struct{}
-	_ = new(empty) // want " \\(zl:new\\)$"
-
-	xp, yp := &x, &y // want " \\(zl:add\\)$" " \\(zl:add\\)$"
-
-	_ = *xp // want " \\(zl:der\\)$"
-
-	if xp == yp { // want " \\(zl:cmp\\)$"
-		fmt.Println("equal")
-	}
-
-	if xp != yp { // want " \\(zl:cmp\\)$"
-		fmt.Println("not equal")
-	}
-
-	_, _ = any(xp).((*[0]string)) // want " \\(zl:ast\\)$"
-
-	switch any(xp).(type) {
-	case (*[0]string): // want " \\(zl:ast\\)$"
-	case string:
+// AllDecls iterates over all declarations of the specified type T in the given files.
+func AllDecls[T ast.Decl](files []*ast.File) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, f := range files {
+			for _, decl := range f.Decls {
+				if d, ok := decl.(T); ok {
+					if !yield(d) {
+						return
+					}
+				}
+			}
+		}
 	}
 }

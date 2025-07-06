@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//go:build go1.24
+
 package zerolint_test
 
 import (
@@ -47,7 +49,7 @@ func TestOptions(t *testing.T) {
 	h := slog.NewTextHandler(&buf, nil)
 	l := slog.New(h)
 
-	l.Info("test", "options", opts)
+	l.InfoContext(t.Context(), "test", "options", opts)
 
 	got := buf.String()
 	if len(got) == 0 {

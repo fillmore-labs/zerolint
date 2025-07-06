@@ -25,7 +25,7 @@ import (
 )
 
 // visitCallArgs checks for explicit nil arguments to pointers to zero-sized parameters.
-func (v *visitor) visitCallArgs(sig *types.Signature, args []ast.Expr) {
+func (v *Visitor) visitCallArgs(sig *types.Signature, args []ast.Expr) {
 	// Matching parameter for each argument. Frozen at the last parameter for variadic functions.
 	var (
 		param       *types.Var
@@ -44,7 +44,7 @@ func (v *visitor) visitCallArgs(sig *types.Signature, args []ast.Expr) {
 		case variadic && i == params.Len()-1: // Variadic and last parameter: Freeze at slice element.
 			param = params.At(i)
 			if variadicType, ok := param.Type().(*types.Slice); ok {
-				elem, valueMethod, zeroSized = v.check.ZeroSizedTypePointer(variadicType.Elem())
+				elem, valueMethod, zeroSized = v.Check.ZeroSizedTypePointer(variadicType.Elem())
 			} else { // variadic arguments should be slices (or string for append, but we are not called for builtins)
 				check = false
 			}
@@ -52,14 +52,14 @@ func (v *visitor) visitCallArgs(sig *types.Signature, args []ast.Expr) {
 		case i < params.Len(): // Normal parameters
 			param = params.At(i)
 			paramType := param.Type()
-			elem, valueMethod, zeroSized = v.check.ZeroSizedTypePointer(paramType)
+			elem, valueMethod, zeroSized = v.Check.ZeroSizedTypePointer(paramType)
 
 		case !variadic: // i >= params.Len(): Do nothing for variadic function, otherwise abort (should not happen)
 			check = false
 		}
 
 		if !check { // should not happen
-			v.diag.LogErrorf(arg,
+			v.Diag.LogErrorf(arg,
 				"Argument count mismatch, argument %d of %d parameters (variadic: %t)", i, params.Len(), variadic)
 
 			break
@@ -69,13 +69,13 @@ func (v *visitor) visitCallArgs(sig *types.Signature, args []ast.Expr) {
 			continue
 		}
 
-		if tv, ok := v.diag.TypesInfo().Types[arg]; ok && tv.IsNil() {
+		if tv, ok := v.Diag.TypesInfo().Types[arg]; ok && tv.IsNil() {
 			v.handleNilArg(arg, param.Name(), elem, valueMethod)
 		}
 	}
 }
 
-func (v *visitor) handleNilArg(arg ast.Expr, name string, elem types.Type, valueMethod bool) {
+func (v *Visitor) handleNilArg(arg ast.Expr, name string, elem types.Type, valueMethod bool) {
 	var cM diag.CategorizedMessage
 	if name == "" {
 		cM = msg.Formatf(msg.CatArgumentNil, valueMethod, "passing explicit nil as parameter of type %q", elem)
@@ -84,6 +84,6 @@ func (v *visitor) handleNilArg(arg ast.Expr, name string, elem types.Type, value
 			"passing explicit nil as parameter %q pointing to zero-sized type %q", name, elem)
 	}
 
-	fixes := v.diag.ReplaceWithZeroValue(arg, elem)
-	v.diag.Report(arg, cM, fixes)
+	fixes := v.Diag.ReplaceWithZeroValue(arg, elem)
+	v.Diag.Report(arg, cM, fixes)
 }

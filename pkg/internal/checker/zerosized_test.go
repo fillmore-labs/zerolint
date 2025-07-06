@@ -112,7 +112,7 @@ type ExcludableEmptyStruct struct{}
 		{
 			name:          "ExcludableEmptyStruct - excluded",
 			getTypeFn:     func() types.Type { return getType(t, pkg, "ExcludableEmptyStruct") },
-			setupChecker:  func(c *Checker) { c.Excludes.Insert("testpkg.ExcludableEmptyStruct") },
+			setupChecker:  func(c *Checker) { c.Excludes.Add("testpkg.ExcludableEmptyStruct") },
 			wantZeroSized: false, wantDetectedName: "testpkg.ExcludableEmptyStruct",
 		},
 		{
@@ -290,7 +290,7 @@ type PtrToExcludableEmptyStruct *ExcludableEmptyStruct
 		{
 			name:          "pointer to ExcludableEmptyStruct - excluded",
 			getTypeFn:     func() types.Type { return getType(t, pkg, "PtrToExcludableEmptyStruct") },
-			setupChecker:  func(c *Checker) { c.Excludes.Insert("testpkg.ExcludableEmptyStruct") },
+			setupChecker:  func(c *Checker) { c.Excludes.Add("testpkg.ExcludableEmptyStruct") },
 			wantZeroSized: false,
 		},
 		{

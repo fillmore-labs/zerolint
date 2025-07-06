@@ -26,8 +26,8 @@ import (
 // visitStructType analyzes struct type declarations for fields or embedded types
 // that are pointers to zero-sized types.
 // If the lint level is `Default` (i.e., `v.level.Below(level.Extended)` is true), it only checks embedded types.
-func (v *visitor) visitStructType(n *ast.StructType) bool {
-	v.checkFieldList(n.Fields, v.level.Below(level.Extended), msg.Struct{})
+func (v *Visitor) visitStructType(n *ast.StructType) bool {
+	v.checkFieldList(n.Fields, v.Level.Below(level.Extended), msg.Struct{})
 
 	return true
 }

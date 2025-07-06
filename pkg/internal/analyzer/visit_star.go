@@ -24,38 +24,38 @@ import (
 )
 
 // visitStar analyzes star expressions (*x).
-func (v *visitor) visitStar(n *ast.StarExpr) bool {
+func (v *Visitor) visitStar(n *ast.StarExpr) bool {
 	if v.starSeen(n) {
 		return false
 	}
 
-	t := v.diag.TypesInfo().TypeOf(n.X)
+	t := v.Diag.TypesInfo().TypeOf(n.X)
 	if t == nil { // should not happen
-		v.diag.LogErrorf(n, "Can't find star type")
+		v.Diag.LogErrorf(n, "Can't find star type")
 
 		return true
 	}
 
-	if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
+	if elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(t); zeroSized {
 		// *... where the type of ... is a pointer to a zero-size variable.
 		// p := &struct{}{}; _ = *p
 		cM := msg.Formatf(msg.CatDeref, valueMethod, "dereferencing pointer to zero-size variable of type %q", elem)
-		fixes := v.diag.RemoveOp(n, n.X)
-		v.diag.Report(n, cM, fixes)
+		fixes := v.Diag.RemoveOp(n, n.X)
+		v.Diag.Report(n, cM, fixes)
 
 		return len(fixes) == 0
 	}
 
-	if v.level.Below(level.Full) {
+	if v.Level.Below(level.Full) {
 		return true
 	}
 
-	if valueMethod, zeroSized := v.check.ZeroSizedType(t); zeroSized {
+	if valueMethod, zeroSized := v.Check.ZeroSizedType(t); zeroSized {
 		// *... where ... is a zero-sized type.
 		// type T struct{}; map[]*T, []*T, f[*T]
 		cM := msg.Formatf(msg.CatStarType, valueMethod, "pointer to zero-sized type %q", t)
-		fixes := v.diag.RemoveOp(n, n.X)
-		v.diag.Report(n, cM, fixes)
+		fixes := v.Diag.RemoveOp(n, n.X)
+		v.Diag.Report(n, cM, fixes)
 
 		return len(fixes) == 0
 	}

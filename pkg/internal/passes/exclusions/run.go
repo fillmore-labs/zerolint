@@ -24,16 +24,23 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+
+	"fillmore-labs.com/zerolint/pkg/internal/typeutil"
 )
 
-type pass analysis.Pass
+type pass struct{ *analysis.Pass }
 
-// run performs the analysis to identify excluded types.
-// It exports an [excludedFact] fact for each newly identified excluded type in the current package.
-func (p *pass) run() (any, error) {
-	p.addExclusions()
+// run performs the analysis to identify excluded types that are defined in the current package.
+// It exports an [excludedFact] for each newly identified excluded type.
+//
+// Note that this pass only handles exclusions on `type` declarations (e.g., `//zerolint:exclude type T ...`).
+// Exclusions on `var` declarations (e.g., `//zerolint:exclude var _ another.Type`) must be handled
+// by the consuming analyzer via the [CalculateExclusions] function, as facts cannot be exported
+// for objects defined in other packages.
+func run(ap *analysis.Pass) (any, error) {
+	p := pass{Pass: ap}
 
-	for decl := range AllDecl[*ast.GenDecl](p.Files) {
+	for decl := range typeutil.AllDecls[*ast.GenDecl](p.Files) {
 		if decl.Tok == token.TYPE {
 			p.processTypeDecl(decl)
 		}
@@ -42,11 +49,7 @@ func (p *pass) run() (any, error) {
 	return p.newResult(), nil
 }
 
-func (p *pass) newResult() exclusionsResult {
-	return exclusionsResult{facts: p.AllObjectFacts()}
-}
-
-func (p *pass) processTypeDecl(genDecl *ast.GenDecl) {
+func (p pass) processTypeDecl(genDecl *ast.GenDecl) {
 	// Exclude all via "//zerolint:exclude" comment on the declaration block.
 	excludeAll := HasExcludeComment(genDecl.Doc)
 
@@ -58,20 +61,17 @@ func (p *pass) processTypeDecl(genDecl *ast.GenDecl) {
 			continue
 		}
 
-		if !excludeAll && !isCtype(spec) { // Exclude cgo-generated types.
-			continue
+		// A type is excluded if it's in a `//zerolint:exclude` block
+		// or if it's a CGo-generated type.
+		if excludeAll || isCtype(spec) {
+			def := p.TypesInfo.Defs[spec.Name]
+
+			if tn, ok := def.(*types.TypeName); ok {
+				p.excludeType(tn)
+			} else { // should not happen
+				log.Printf("Internal error: Expected *types.TypeName, got %T (zl:xxx)", def)
+			}
 		}
-
-		def := p.TypesInfo.Defs[spec.Name]
-		tn, ok := def.(*types.TypeName)
-
-		if !ok { // should not happen
-			log.Printf("Internal error: Expected *types.TypeName, got %T (zl:xxx)", def)
-
-			continue
-		}
-
-		p.excludeType(tn)
 	}
 }
 
@@ -80,41 +80,4 @@ func isCtype(ts *ast.TypeSpec) bool {
 	const cgoTypePrefix = "_Ctype_"
 
 	return strings.HasPrefix(ts.Name.Name, cgoTypePrefix)
-}
-
-// excludeType exports an exclusion fact for the given object identifier.
-func (p *pass) excludeType(tn *types.TypeName) {
-	p.ExportObjectFact(tn, &excludedFact{})
-}
-
-// addExclusions prefills hard coded type definitions.
-// For example, it ignores [runtime.Func] because pointers to this type represent opaque
-// runtime-internal data, not zero-sized types the linter targets.
-func (p *pass) addExclusions() {
-	pkg := p.Pkg
-
-	var typeNames []string
-
-	// This might need an alternative approach:
-	//
-	// https://pkg.go.dev/golang.org/x/tools/go/analysis#hdr-Modular_analysis_with_Facts
-	// “Some driver implementations (such as those based on Bazel and Blaze)
-	// do not currently apply analyzers to packages of the standard library.”
-	switch pkg.Path() {
-	case "runtime":
-		typeNames = []string{"Func", "notInHeap"}
-
-	case "runtime/cgo":
-		typeNames = []string{"Incomplete"}
-
-	default:
-		return
-	}
-
-	scope := pkg.Scope()
-	for _, name := range typeNames {
-		if tn, ok := scope.Lookup(name).(*types.TypeName); ok {
-			p.excludeType(tn)
-		}
-	}
 }

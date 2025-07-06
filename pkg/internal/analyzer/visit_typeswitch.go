@@ -22,16 +22,16 @@ import (
 	"fillmore-labs.com/zerolint/pkg/internal/analyzer/msg"
 )
 
-func (v *visitor) visitTypeSwitch(n *ast.TypeSwitchStmt) bool {
+func (v *Visitor) visitTypeSwitch(n *ast.TypeSwitchStmt) bool {
 	for _, b := range n.Body.List {
 		if c, ok := b.(*ast.CaseClause); ok {
 			for _, x := range c.List {
-				t := v.diag.TypesInfo().TypeOf(x)
-				if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
+				t := v.Diag.TypesInfo().TypeOf(x)
+				if elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(t); zeroSized {
 					cM := msg.Formatf(msg.CatTypeAssert, valueMethod,
 						"type switch with pointer to zero-size variable of type %q", elem)
 					fixes := v.removeStar(x)
-					v.diag.Report(x, cM, fixes)
+					v.Diag.Report(x, cM, fixes)
 				}
 			}
 		}

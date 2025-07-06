@@ -40,7 +40,7 @@ const (
 	CatStarType            diag.Category = "typ"
 	CatStructEmbedded      diag.Category = "emb"
 	CatStructField         diag.Category = "fld"
-	CatTypeAssert          diag.Category = "art"
+	CatTypeAssert          diag.Category = "ast"
 	CatTypeDeclaration     diag.Category = "dcl"
 	CatVar                 diag.Category = "var"
 	// keep-sorted end

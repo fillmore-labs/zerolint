@@ -1,19 +1,25 @@
 module test
 
-go 1.23.0
+go 1.24.0
 
-toolchain go1.24.4
+toolchain go1.25.0
 
 require (
+	github.com/ghodss/yaml v1.0.0
+	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/exp/errors v0.0.0-20250620022241-b7579e27df2b
+	golang.org/x/exp/errors v0.0.0-20250813145105-42675adae3e6
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 )

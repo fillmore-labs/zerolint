@@ -41,5 +41,5 @@ func (r Filter) ExcludedType(tn *types.TypeName) bool {
 		return false
 	}
 
-	return r.excludedTypeDefs.Has(tn.Pos())
+	return r.excludedTypeDefs.Contains(tn.Pos())
 }

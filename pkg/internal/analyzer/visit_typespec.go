@@ -24,17 +24,17 @@ import (
 )
 
 // visitTypeSpec analyzes type declarations to detect if they explicitly declare types as pointers to zero-sized types.
-func (v *visitor) visitTypeSpec(n *ast.TypeSpec) bool {
+func (v *Visitor) visitTypeSpec(n *ast.TypeSpec) bool {
 	if isCtype(n) {
 		return false // cgo types are often opaque
 	}
 
-	t := v.diag.TypesInfo().TypeOf(n.Type)
-	if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(t); zeroSized {
+	t := v.Diag.TypesInfo().TypeOf(n.Type)
+	if elem, valueMethod, zeroSized := v.Check.ZeroSizedTypePointer(t); zeroSized {
 		cM := msg.Formatf(msg.CatTypeDeclaration, valueMethod,
 			"type declaration to pointer to zero-sized type %q", elem)
 		fixes := v.removeStar(n.Type)
-		v.diag.Report(n, cM, fixes)
+		v.Diag.Report(n, cM, fixes)
 	}
 
 	return true

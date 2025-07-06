@@ -31,10 +31,10 @@ func TestSet(t *testing.T) {
 	s := New[int]()
 
 	// when
-	s.Insert(1)
+	s.Add(1)
 
 	// then
-	if !s.Has(1) {
+	if !s.Contains(1) {
 		t.Error("Expected 1 to be set")
 	}
 }
@@ -48,23 +48,29 @@ func TestUnset(t *testing.T) {
 	// when
 
 	// then
-	if s.Has(1) {
+	if s.Contains(1) {
 		t.Error("Expected 1 to be unset")
 	}
 }
 
-func TestElements(t *testing.T) {
+func TestAll(t *testing.T) {
 	t.Parallel()
 
 	// given
 	s := New(1)
 
 	// when
-	l := s.Elements()
+	var e0 int
+
+	for e := range s.All() {
+		e0 = e
+
+		break
+	}
 
 	// then
-	if len(l) != 1 || l[0] != 1 {
-		t.Errorf("Expected l to be [1], got %v", l)
+	if e0 != 1 {
+		t.Errorf("Expected element to be 1, got %v", e0)
 	}
 }
 

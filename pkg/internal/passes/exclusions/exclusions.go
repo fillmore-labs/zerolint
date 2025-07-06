@@ -17,7 +17,6 @@
 package exclusions
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -26,22 +25,39 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"fillmore-labs.com/zerolint/pkg/internal/set"
+	"fillmore-labs.com/zerolint/pkg/internal/typeutil"
 )
 
-type calc analysis.Pass
+type calc struct{ *analysis.Pass }
 
-// CalculateExclusions performs the analysis to identify excluded types.
-// It retrieves exclusion facts from the dedicated exclusions pass and
-// adds types excluded via the "//zerolint:exclude" comment on "var _ Type" declarations.
-func CalculateExclusions(pass *analysis.Pass) (set.Set[token.Pos], error) {
-	c := (*calc)(pass)
+// CalculateExclusions performs an analysis to identify excluded types for the current pass.
+//
+// It works in two stages:
+//
+//  1. It retrieves all `excludedFact`s that were exported by the [Analyzer].
+//     This covers types that were excluded directly in their defining package
+//     using a `//zerolint:exclude` comment on the `type` declaration.
+//     An [analysis.Fact] is used for this because it allows the exclusion information
+//     to be passed between packages.
+//
+//  2. It scans `var` declarations in the *current* package for `//zerolint:exclude` comments
+//     (e.g., `var _ another.Type`). This mechanism is necessary to exclude types from
+//     external packages. We cannot export a Fact for an external type, as the analysis
+//     framework requires facts to be associated with objects defined in the current package.
+//     Instead, we resolve the type identifier within the current pass and add its definition
+//     position directly to the result set. This local calculation must be performed by each
+//     consuming analyzer.
+func CalculateExclusions(ap *analysis.Pass) (set.Set[token.Pos], error) {
+	c := calc{Pass: ap}
 
-	excludedTypeDefs, err := ResultOf(pass)
+	excludedTypeDefs, err := ResultOf(c.Pass)
 	if err != nil {
 		return nil, err
 	}
 
-	for genDecl := range AllDecl[*ast.GenDecl](c.Files) {
+	c.addExclusions(excludedTypeDefs)
+
+	for genDecl := range typeutil.AllDecls[*ast.GenDecl](c.Files) {
 		switch genDecl.Tok { //nolint:exhaustive
 		case token.TYPE:
 			// Check for misplaced comments on the spec.
@@ -67,7 +83,7 @@ func CalculateExclusions(pass *analysis.Pass) (set.Set[token.Pos], error) {
 
 // processExcludedValueSpec handles a ValueSpec within a "//zerolint:exclude" var block.
 // It expects the pattern `var _ Type` and adds 'Type' to the excluded set.
-func (c *calc) processExcludedValueSpec(genDecl *ast.GenDecl, excludedTypeDefs set.Set[token.Pos]) {
+func (c calc) processExcludedValueSpec(genDecl *ast.GenDecl, excludedTypeDefs set.Set[token.Pos]) {
 	for _, genSpec := range genDecl.Specs {
 		spec, ok := genSpec.(*ast.ValueSpec)
 		if !ok { // should not happen
@@ -76,10 +92,8 @@ func (c *calc) processExcludedValueSpec(genDecl *ast.GenDecl, excludedTypeDefs s
 			continue
 		}
 
-		id := spec.Names[0]
-
 		// Check for "_" identifier
-		if len(spec.Names) != 1 || id.Name != "_" {
+		if len(spec.Names) != 1 || spec.Names[0].Name != "_" {
 			c.Report(analysis.Diagnostic{
 				Pos:     spec.Pos(),
 				End:     spec.End(),
@@ -100,16 +114,16 @@ func (c *calc) processExcludedValueSpec(genDecl *ast.GenDecl, excludedTypeDefs s
 			continue
 		}
 
-		// Look up the type definition
-		def, ok := c.TypesInfo.Defs[id]
-		if !ok { // should not happen
-			log.Printf("Internal error: can't find value type definition (zl:xxx)")
+		tv := c.TypesInfo.Types[spec.Type]
+
+		if !tv.IsType() { // should not happen
+			log.Printf("Internal error: Expected type expression, got %#v (zl:xxx)", tv)
 
 			continue
 		}
 
 		var tn *types.TypeName
-		switch t := def.Type().(type) {
+		switch t := tv.Type.(type) {
 		case *types.Named:
 			tn = t.Obj()
 
@@ -118,21 +132,17 @@ func (c *calc) processExcludedValueSpec(genDecl *ast.GenDecl, excludedTypeDefs s
 
 		default:
 			ts := types.TypeString(t, types.RelativeTo(c.Pkg))
-			c.Report(analysis.Diagnostic{
-				Pos:     spec.Pos(),
-				End:     spec.End(),
-				Message: fmt.Sprintf("Expected type name, got %q (zl:com)", ts),
-			})
+			c.ReportRangef(spec, "Expected type name, got %q (zl:com)", ts)
 
 			continue
 		}
 
-		excludedTypeDefs.Insert(tn.Pos())
+		excludedTypeDefs.Add(tn.Pos())
 	}
 }
 
 // lintSpecs analyzes a GenDecl to ensure exclude comments are correctly positioned on the declaration block.
-func (c *calc) lintSpecs(genDecl *ast.GenDecl) {
+func (c calc) lintSpecs(genDecl *ast.GenDecl) {
 	for _, spec := range genDecl.Specs {
 		switch spec := spec.(type) {
 		case *ast.TypeSpec:
@@ -153,6 +163,40 @@ func (c *calc) lintSpecs(genDecl *ast.GenDecl) {
 					End:     spec.End(),
 					Message: "Exclude types with comment before the \"var\" keyword (zl:com)",
 				})
+			}
+		}
+	}
+}
+
+// addExclusions prefills hard coded type definitions.
+// For example, it ignores [runtime.Func] because pointers to this type represent opaque
+// runtime-internal data, not zero-sized types the linter targets.
+//
+// We do it here and not as Facts:
+//
+// > “Some driver implementations (such as those based on Bazel and Blaze)
+// do not currently apply analyzers to packages of the standard library.”
+//
+// https://pkg.go.dev/golang.org/x/tools/go/analysis#hdr-Modular_analysis_with_Facts
+func (c calc) addExclusions(excludedTypeDefs set.Set[token.Pos]) {
+	for _, pkg := range c.Pkg.Imports() {
+		var typeNames []string
+
+		switch pkg.Path() {
+		case "runtime":
+			typeNames = []string{"Func"}
+
+		case "runtime/cgo":
+			typeNames = []string{"Incomplete"}
+
+		default:
+			continue
+		}
+
+		scope := pkg.Scope()
+		for _, name := range typeNames {
+			if tn, ok := scope.Lookup(name).(*types.TypeName); ok {
+				excludedTypeDefs.Add(tn.Pos())
 			}
 		}
 	}

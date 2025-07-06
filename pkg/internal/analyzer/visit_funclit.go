@@ -19,12 +19,14 @@ package analyzer
 import (
 	"go/ast"
 
+	"golang.org/x/tools/go/ast/edge"
 	"golang.org/x/tools/go/ast/inspector"
 )
 
 // visitFuncLit examines function literals.
-func (v *visitor) visitFuncLit(c inspector.Cursor, n *ast.FuncLit) bool {
-	v.checkReturns(c, n.Body, n.Type.Results)
+func (v *Visitor) visitFuncLit(c inspector.Cursor, n *ast.FuncLit) bool {
+	b := c.ChildAt(edge.FuncLit_Body, -1)
+	v.checkReturns(b, n.Type)
 
 	return true
 }

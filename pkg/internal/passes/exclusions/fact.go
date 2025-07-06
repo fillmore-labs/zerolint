@@ -16,9 +16,16 @@
 
 package exclusions
 
-//zerolint:exclude // Marker type ony
+import "go/types"
+
+//zerolint:exclude // Only a marker type.
 type excludedFact struct{}
 
 // AFact makes *excludeFact satisfy the [analysis.Fact] interface.
 // [analysis.Fact]s must be pointers to be exported as a fact.
 func (*excludedFact) AFact() {}
+
+// excludeType exports an exclusion fact for the given object identifier.
+func (p pass) excludeType(tn *types.TypeName) {
+	p.ExportObjectFact(tn, &excludedFact{})
+}

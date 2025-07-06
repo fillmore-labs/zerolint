@@ -19,8 +19,8 @@ package analyzer
 import "go/ast"
 
 // visitFile checks for generated files.
-func (v *visitor) visitFile(n *ast.File) bool {
-	v.diag.CurrentFile = n
+func (v *Visitor) visitFile(n *ast.File) bool {
+	v.Diag.CurrentFile = n
 
-	return v.generated || !ast.IsGenerated(n)
+	return v.Generated || !ast.IsGenerated(n)
 }

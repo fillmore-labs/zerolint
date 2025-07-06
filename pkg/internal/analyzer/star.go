@@ -23,11 +23,11 @@ import (
 )
 
 // removeStar suggests a fix that removes the star ('*') operator from an expression, if possible.
-func (v *visitor) removeStar(x ast.Expr) []analysis.SuggestedFix {
+func (v *Visitor) removeStar(x ast.Expr) []analysis.SuggestedFix {
 	if n, ok := ast.Unparen(x).(*ast.StarExpr); ok {
 		v.ignoreStar(n)
 
-		return v.diag.RemoveOp(n, n.X)
+		return v.Diag.RemoveOp(n, n.X)
 	}
 	// We could handle aliases with `*ast.Ident` here, but assume we already fixed the alias definition.
 
@@ -35,11 +35,11 @@ func (v *visitor) removeStar(x ast.Expr) []analysis.SuggestedFix {
 }
 
 // ignoreStar ignores the star expression in further processing.
-func (v *visitor) ignoreStar(n *ast.StarExpr) {
-	v.seenStars.Insert(n.Pos())
+func (v *Visitor) ignoreStar(n *ast.StarExpr) {
+	v.seenStars.Add(n.Pos())
 }
 
 // starSeen checks if a given star expression has already been processed by verifying its position in the seen set.
-func (v *visitor) starSeen(n *ast.StarExpr) bool {
-	return v.seenStars.Has(n.Pos())
+func (v *Visitor) starSeen(n *ast.StarExpr) bool {
+	return v.seenStars.Contains(n.Pos())
 }

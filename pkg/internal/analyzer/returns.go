@@ -19,6 +19,7 @@ package analyzer
 import (
 	"go/ast"
 	"go/types"
+	"iter"
 
 	"golang.org/x/tools/go/ast/inspector"
 
@@ -32,45 +33,20 @@ type retType struct {
 }
 
 // checkReturns examines function bodies for explicit nil return values for pointers to zero-sized types.
-func (v *visitor) checkReturns(c inspector.Cursor, body *ast.BlockStmt, results *ast.FieldList) {
-	if body == nil {
-		return // Skip functions without bodies (e.g. external functions)
-	}
-
-	returnTypes, ok := v.hasZeroSizedPointerReturn(results)
+func (v *Visitor) checkReturns(c inspector.Cursor, typ *ast.FuncType) {
+	returnTypes, ok := v.hasZeroSizedPointerReturn(typ.Results)
 	if !ok {
 		return // No pointer to zero-sized types
 	}
 
-	b, ok := c.FindNode(body)
-	if !ok { // should not happen
-		v.diag.LogErrorf(body, "Can't find body")
-
-		return
+	for n := range AllReturns(c) {
+		v.visitReturnStmt(n, returnTypes)
 	}
-
-	// inspectBody is a function suitable for [inspector.Cursor] to walk a function body.
-	nodes := []ast.Node{(*ast.FuncLit)(nil), (*ast.ReturnStmt)(nil)}
-	inspectBody := func(c inspector.Cursor) (descend bool) {
-		switch n := c.Node().(type) {
-		case *ast.FuncLit:
-			// Don't check returns in nested function literals
-			return false
-
-		case *ast.ReturnStmt:
-			// Check for explicit nil returns for zero-sized pointer types.
-			v.visitReturnStmt(n, returnTypes)
-		}
-
-		return true
-	}
-
-	b.Inspect(nodes, inspectBody)
 }
 
 // hasZeroSizedPointerReturn examines a function's return types to detect if any are pointers to zero-sized types.
 // It returns a list of return type information and a boolean to indicate if a zero-sized pointer return type exists.
-func (v *visitor) hasZeroSizedPointerReturn(results *ast.FieldList) ([]retType, bool) {
+func (v *Visitor) hasZeroSizedPointerReturn(results *ast.FieldList) ([]retType, bool) {
 	// Check if the function has return values
 	numResults := results.NumFields()
 	if numResults == 0 {
@@ -86,8 +62,8 @@ func (v *visitor) hasZeroSizedPointerReturn(results *ast.FieldList) ([]retType, 
 	for _, res := range results.List {
 		var retInfo retType
 
-		t := v.diag.TypesInfo().TypeOf(res.Type)
-		retInfo.elem, retInfo.valueMethod, retInfo.zeroSized = v.check.ZeroSizedTypePointer(t)
+		t := v.Diag.TypesInfo().TypeOf(res.Type)
+		retInfo.elem, retInfo.valueMethod, retInfo.zeroSized = v.Check.ZeroSizedTypePointer(t)
 
 		if !hasZeroSizedPointer && retInfo.zeroSized {
 			hasZeroSizedPointer = true
@@ -110,7 +86,7 @@ func (v *visitor) hasZeroSizedPointerReturn(results *ast.FieldList) ([]retType, 
 // visitReturnStmt processes `return` statements within a function body.
 // It checks if any returned expression corresponding to an expected zero-sized pointer type
 // is explicitly 'nil'.
-func (v *visitor) visitReturnStmt(n *ast.ReturnStmt, returnTypes []retType) {
+func (v *Visitor) visitReturnStmt(n *ast.ReturnStmt, returnTypes []retType) {
 	if len(n.Results) != len(returnTypes) {
 		// Skip return statements with differing arity
 		return
@@ -123,9 +99,9 @@ func (v *visitor) visitReturnStmt(n *ast.ReturnStmt, returnTypes []retType) {
 		}
 
 		// Check if the returned expression is the identifier 'nil'
-		tv, ok := v.diag.TypesInfo().Types[result]
+		tv, ok := v.Diag.TypesInfo().Types[result]
 		if !ok { // should not happen
-			v.diag.LogErrorf(result, "Unknown result type")
+			v.Diag.LogErrorf(result, "Unknown result type")
 
 			continue
 		}
@@ -133,8 +109,36 @@ func (v *visitor) visitReturnStmt(n *ast.ReturnStmt, returnTypes []retType) {
 		if tv.IsNil() {
 			cM := msg.Formatf(msg.CatReturnNil, returnType.valueMethod,
 				"explicitly returning nil for pointer to zero-sized type %q", returnType.elem)
-			fixes := v.diag.ReplaceWithZeroValue(result, returnType.elem)
-			v.diag.Report(result, cM, fixes)
+			fixes := v.Diag.ReplaceWithZeroValue(result, returnType.elem)
+			v.Diag.Report(result, cM, fixes)
 		}
+	}
+}
+
+// AllReturns iterates over all return statements within the AST tree of the
+// node at the given inspector cursor.
+//
+// It does not descend into nested function literals, so only return statements
+// of the current function are considered.
+func AllReturns(c inspector.Cursor) iter.Seq[*ast.ReturnStmt] {
+	return func(yield func(*ast.ReturnStmt) bool) {
+		cont := true
+
+		c.Inspect(
+			[]ast.Node{(*ast.FuncLit)(nil), (*ast.ReturnStmt)(nil)},
+			func(c inspector.Cursor) bool {
+				switch n := c.Node().(type) {
+				case *ast.FuncLit:
+					return false // Don't check returns in nested function literals
+
+				case *ast.ReturnStmt:
+					if cont {
+						cont = yield(n)
+					}
+				}
+
+				return cont
+			},
+		)
 	}
 }

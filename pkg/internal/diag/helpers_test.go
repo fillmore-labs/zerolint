@@ -59,15 +59,14 @@ func parseSource(tb testing.TB, filename, src string) (*types.Info, *types.Packa
 
 	f, err := parser.ParseFile(fset, filename, src, parser.SkipObjectResolution)
 	if err != nil {
-		tb.Fatalf("failed to parse source: %v", err)
+		tb.Fatalf("failed to parse source: %T %v", err, err)
 	}
 
 	conf := types.Config{Importer: importer.Default()}
+
 	info := &types.Info{
-		Types:      make(map[ast.Expr]types.TypeAndValue),
-		Defs:       make(map[*ast.Ident]types.Object),
-		Uses:       make(map[*ast.Ident]types.Object),
-		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		Types: make(map[ast.Expr]types.TypeAndValue),
+		Uses:  make(map[*ast.Ident]types.Object),
 	}
 
 	pkg, err := conf.Check("testpkg", fset, []*ast.File{f}, info)
