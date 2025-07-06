@@ -28,7 +28,7 @@ var Analyzer = &analysis.Analyzer{ //nolint:gochecknoglobals
 	Name:             "exclusions",
 	Doc:              "determine type exclusions for later passes",
 	URL:              "https://pkg.go.dev/fillmore-labs.com/zerolint/pkg/internal/passes/exclusions",
-	Run:              func(p *analysis.Pass) (any, error) { return (*pass)(p).run() },
+	Run:              run,
 	RunDespiteErrors: true,
 
 	FactTypes:  []analysis.Fact{(*excludedFact)(nil)},

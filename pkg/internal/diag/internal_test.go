@@ -39,5 +39,5 @@ func TestDiag_Internalf(t *testing.T) {
 	info, pkg, fset, astFile := parseSource(t, "main.go", "package main")
 	d := newTestDiag(t, info, pkg, fset, astFile)
 
-	d.LogErrorf(astFile, "testing")
+	d.LogErrorf(astFile, "ignore me")
 }

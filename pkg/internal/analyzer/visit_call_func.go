@@ -16,33 +16,27 @@
 
 package analyzer
 
-import "go/ast"
+import (
+	"go/ast"
+	"go/types"
+)
 
-// visitCallIdent processes encoding/json.Unmarshal (ignored as it requires pointer arguments),
+// visitCallFunc processes encoding/json.Unmarshal (ignored as it requires pointer arguments),
 // errors.Is and errors.As from the standard library or golang.org/x/exp/errors.
-func (v *visitor) visitCallIdent(n *ast.CallExpr, fun *ast.Ident) bool { //nolint:funlen,cyclop
-	if isCfunc(fun.Name) {
-		return false
-	}
-
-	obj, ok := v.diag.TypesInfo().Uses[fun]
-	if !ok { // should not happen
-		v.diag.LogErrorf(fun, "Can't find identifier %q", fun.Name)
-
-		return true
-	}
-
+func (v *visitor) visitCallFunc(n *ast.CallExpr, fun *types.Func) bool {
 	var path string
-	if pkg := obj.Pkg(); pkg != nil {
+	if pkg := fun.Pkg(); pkg != nil {
 		path = pkg.Path()
 	}
 
-	name := obj.Name()
+	name := fun.Name()
 
+	// Since we have a lot of hardcoded libraries here, a check by signature might be a better heuristic.
 	switch path {
 	case "encoding/json", "sigs.k8s.io/yaml", "github.com/ghodss/yaml",
 		"gopkg.in/yaml.v3", "gopkg.in/yaml.v2", "github.com/go-yaml/yaml":
-		if name == "Unmarshal" {
+		switch name {
+		case "Unmarshal", "Decode":
 			return false // Do not report pointers in json.Unmarshal(..., ...).
 		}
 

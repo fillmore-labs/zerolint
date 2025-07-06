@@ -18,11 +18,14 @@ package exclusions
 
 import (
 	"go/ast"
+	"go/types"
 	"iter"
+
+	"golang.org/x/tools/go/analysis"
 )
 
-// AllDecl iterates over all declarations of the specified type T in the given files.
-func AllDecl[T ast.Decl](files []*ast.File) iter.Seq[T] {
+// AllDecls iterates over all declarations of the specified type T in the given files.
+func AllDecls[T ast.Decl](files []*ast.File) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for _, f := range files {
 			for _, decl := range f.Decls {
@@ -30,6 +33,19 @@ func AllDecl[T ast.Decl](files []*ast.File) iter.Seq[T] {
 					if !yield(d) {
 						return
 					}
+				}
+			}
+		}
+	}
+}
+
+// AllFacts iterates over all facts of the specified type T in the given facts.
+func AllFacts[T analysis.Fact](facts []analysis.ObjectFact) iter.Seq2[types.Object, T] {
+	return func(yield func(types.Object, T) bool) {
+		for _, fact := range facts {
+			if f, ok := fact.Fact.(T); ok {
+				if !yield(fact.Object, f) {
+					break
 				}
 			}
 		}

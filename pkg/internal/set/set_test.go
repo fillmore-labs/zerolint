@@ -53,18 +53,24 @@ func TestUnset(t *testing.T) {
 	}
 }
 
-func TestElements(t *testing.T) {
+func TestAll(t *testing.T) {
 	t.Parallel()
 
 	// given
 	s := New(1)
 
 	// when
-	l := s.Elements()
+	var e0 int
+
+	for e := range s.All() {
+		e0 = e
+
+		break
+	}
 
 	// then
-	if len(l) != 1 || l[0] != 1 {
-		t.Errorf("Expected l to be [1], got %v", l)
+	if e0 != 1 {
+		t.Errorf("Expected element to be 1, got %v", e0)
 	}
 }
 

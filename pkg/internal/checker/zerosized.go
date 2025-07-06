@@ -157,6 +157,8 @@ func IsZeroSized(t types.Type) bool {
 		top := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 
+		// We could check for excluded *[types.Named] or *[types.Alias] here.
+
 		switch u := top.Underlying().(type) {
 		case *types.Array:
 			// An array is zero-sized if its length is 0 or its element type is zero-sized.

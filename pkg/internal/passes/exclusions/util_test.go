@@ -20,12 +20,16 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
+	"strconv"
 	"testing"
+
+	"golang.org/x/tools/go/analysis"
 
 	. "fillmore-labs.com/zerolint/pkg/internal/passes/exclusions"
 )
 
-func TestAllDecl(t *testing.T) {
+func TestAllDecls(t *testing.T) {
 	t.Parallel()
 
 	const src = `package main
@@ -41,7 +45,7 @@ func bar() {}
 	}
 
 	var f *ast.FuncDecl
-	for d := range AllDecl[*ast.FuncDecl]([]*ast.File{file}) {
+	for d := range AllDecls[*ast.FuncDecl]([]*ast.File{file}) {
 		f = d
 
 		break
@@ -49,5 +53,61 @@ func bar() {}
 
 	if f == nil || f.Name.Name != "foo" {
 		t.Errorf("Expected foo function, got %#v", f)
+	}
+}
+
+type myFact struct{ value int }
+
+func (*myFact) AFact() {}
+
+type otherFact struct{}
+
+func (*otherFact) AFact() {}
+
+func TestAllFacts(t *testing.T) {
+	t.Parallel()
+
+	pkg := types.NewPackage("test", "test")
+
+	facts := make([]analysis.ObjectFact, 0, 4)
+
+	for i := range 4 {
+		fact := analysis.ObjectFact{
+			Object: types.NewTypeName(token.NoPos, pkg, "MyType"+strconv.Itoa(i+1), nil),
+		}
+		switch i {
+		case 1:
+			fact.Fact = &otherFact{}
+
+		default:
+			fact.Fact = &myFact{value: i + 1}
+		}
+
+		facts = append(facts, fact)
+	}
+
+	found := make(map[string]int, 2)
+
+	for obj, fact := range AllFacts[*myFact](facts) {
+		found[obj.Name()] = fact.value
+		if len(found) == 2 {
+			break
+		}
+	}
+
+	if len(found) != 2 {
+		t.Errorf("Expected to find 2 facts, but got %d", len(found))
+	}
+
+	if val, ok := found["MyType1"]; !ok || val != 1 {
+		t.Errorf("Expected MyType1 with value 1, got %d (found: %v)", val, ok)
+	}
+
+	if val, ok := found["MyType3"]; !ok || val != 3 {
+		t.Errorf("Expected MyType3 with value 3, got %d (found: %v)", val, ok)
+	}
+
+	if _, ok := found["MyType2"]; ok {
+		t.Error("Expected not to find MyType2, but it was present")
 	}
 }

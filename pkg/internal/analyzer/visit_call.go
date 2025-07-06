@@ -20,6 +20,7 @@ import (
 	"go/ast"
 	"go/types"
 
+	"fillmore-labs.com/zerolint/pkg/internal/analyzer/msg"
 	"fillmore-labs.com/zerolint/pkg/zerolint/level"
 )
 
@@ -30,23 +31,44 @@ import (
 //     parameters and special-casing functions like errors.Is or json.Unmarshal.
 func (v *visitor) visitCall(n *ast.CallExpr) bool {
 	switch funType := v.diag.TypesInfo().Types[n.Fun]; {
-	case funType.IsBuiltin():
+	case funType.IsBuiltin(): // Check for calls to new(T).
 		if v.level.Below(level.Extended) {
 			return true
 		}
 
-		return v.visitBuiltin(n) // Check for calls to new(T).
+		return v.visitBuiltin(n)
 
-	case funType.IsType():
+	case funType.IsType(): // Check for type casts T(...).
 		if v.level.Below(level.Extended) {
 			return true
 		}
 
-		return v.visitCast(n, funType.Type) // Check for type casts T(...).
+		return v.visitCast(n, funType.Type)
 
 	case funType.IsValue():
-		if !v.visitCallFun(n) { // Check for errors.Is(x, y) and errors.As(x, y).
+		// Retrieve the definition of the called function.
+		fun, ok := v.diag.FuncOf(n.Fun)
+		if !ok { // *ast.FuncLit or *types.Var
+			return true
+		}
+
+		if isCfunc(fun.Name()) {
 			return false
+		}
+
+		// visitCallFun checks for encoding/json#Decoder.Decode, json.Unmarshal, errors.Is and errors.As.
+		if !v.visitCallFunc(n, fun) {
+			return false
+		}
+
+		if v.level.AtLeast(level.Extended) {
+			if e, ok := ast.Unparen(n.Fun).(*ast.SelectorExpr); ok {
+				// Selection expression
+				if sel, ok := v.diag.TypesInfo().Selections[e]; ok && sel.Kind() == types.MethodExpr {
+					// Method used as a function value (e.g., (*T).Method).
+					v.visitCallMethodExpr(e, sel)
+				}
+			}
 		}
 
 		if v.level.AtLeast(level.Full) {
@@ -64,25 +86,18 @@ func (v *visitor) visitCall(n *ast.CallExpr) bool {
 	}
 }
 
-// visitCallFun checks for encoding/json#Decoder.Decode, json.Unmarshal, errors.Is and errors.As.
-func (v *visitor) visitCallFun(n *ast.CallExpr) bool {
-	switch fun := ast.Unparen(n.Fun).(type) {
-	case *ast.SelectorExpr:
-		if sel, ok := v.diag.TypesInfo().Selections[fun]; ok {
-			// Selection expression
-			if v.level.Below(level.Extended) {
-				return true
-			}
+// visitCallSelection handles method expressions selected from a value (dec.Decode(...)) or type
+// ((*json.Decoder).Decode).
+// For method expressions with receivers that are pointers to zero-sized types, it reports an issue.
+func (v *visitor) visitCallMethodExpr(n *ast.SelectorExpr, sel *types.Selection) {
+	// We care about the receiver of the method expression, *not* the signature of the possibly embedded function:
+	//	recv := fun.Signature().Recv().Type()
+	recv := sel.Recv()
 
-			return v.visitCallSelection(fun, sel)
-		}
-
-		return v.visitCallIdent(n, fun.Sel)
-
-	case *ast.Ident:
-		return v.visitCallIdent(n, fun)
-
-	default:
-		return true
+	if elem, valueMethod, zeroSized := v.check.ZeroSizedTypePointer(recv); zeroSized {
+		cM := msg.Formatf(msg.CatMethodExpression, valueMethod,
+			"method expression receiver is pointer to zero-size type %q", elem)
+		fixes := v.removeStar(n.X)
+		v.diag.Report(n, cM, fixes)
 	}
 }
