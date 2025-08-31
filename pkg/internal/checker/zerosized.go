@@ -50,7 +50,7 @@ func (c *Checker) ZeroSizedTypePointer(t types.Type) (elem types.Type, valueMeth
 // and, if zeroSized is true:
 //   - valueMethod: the type has value receiver methods.
 func (c *Checker) ZeroSizedType(t types.Type) (valueMethod, zeroSized bool) {
-	if c.isIgnored(t) {
+	if c.ignored(t) {
 		return false, false
 	}
 
@@ -64,7 +64,7 @@ func (c *Checker) ZeroSizedType(t types.Type) (valueMethod, zeroSized bool) {
 
 		c.trackType(typeName, vM)
 
-		zS = !c.isExcluded(typeName)
+		zS = !c.excluded(typeName)
 	}
 
 	return vM, zS
@@ -82,7 +82,7 @@ func (c *Checker) lookupOrCalculate(t types.Type) (valueMethod, zeroSized bool) 
 	}
 
 	// Check if the underlying type is zero-sized.
-	if !IsZeroSized(t) {
+	if !ZeroSized(t, 0) {
 		// Cache the result.
 		c.cache.Set(t, typeCache{zeroSized: false})
 
@@ -97,25 +97,33 @@ func (c *Checker) lookupOrCalculate(t types.Type) (valueMethod, zeroSized bool) 
 	return vM, true
 }
 
+// hasValueMethod checks if a type has any methods with a value receiver.
+func hasValueMethod(t types.Type) bool {
+	mset := types.NewMethodSet(t)
+
+	return mset.Len() > 0
+}
+
 // Track the zero-sized type name for reporting, even if excluded.
 // Excluded types are still detected but not considered for analysis.
 func (c *Checker) trackType(typeName string, vM bool) {
 	c.Detected[typeName] = vM
 }
 
-// Filter out type name by user-specified excludes or regex.
-func (c *Checker) isExcluded(typeName string) bool {
+// excluded filters out type names by user-specified excludes or regex.
+func (c *Checker) excluded(typeName string) bool {
 	return c.Excludes.Contains(typeName) || c.Regex != nil && !c.Regex.MatchString(typeName)
 }
 
-// isIgnored checks if a type should be ignored by the zero-size analysis
+// ignored checks if a type should be ignored by the zero-size analysis
 // (e.g., explicitly excluded via `//nolint:zerolint` directive or not a candidate type).
-func (c *Checker) isIgnored(t types.Type) bool {
+func (c *Checker) ignored(t types.Type) bool {
 	if t == nil {
 		return true
 	}
 
 	var tn *types.TypeName
+
 	switch t := t.(type) {
 	case *types.Named:
 		tn = t.Obj()
@@ -138,53 +146,32 @@ func (c *Checker) isIgnored(t types.Type) bool {
 	return c.ExcludedTypeDefs.ExcludedType(tn)
 }
 
-// IsZeroSized determines whether the type t is provably zero-sized.
-func IsZeroSized(t types.Type) bool {
-	const (
-		// initialStackCapacity is the initial capacity for the type traversal stack
-		// This reduces allocations for most common cases.
-		initialStackCapacity = 10
+const maxDepth = 10
 
-		// maxIterations protects from recusive types (should not happen) and types
-		// that are too costly to evaluate.
-		maxIterations = 100
-	)
-
-	store := [initialStackCapacity]types.Type{t}
-	stack := store[:1]
-
-	for budget := maxIterations; budget > 0 && len(stack) > 0; budget-- {
-		top := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-
-		// We could check for excluded *[types.Named] or *[types.Alias] here.
-
-		switch u := top.Underlying().(type) {
-		case *types.Array:
-			// An array is zero-sized if its length is 0 or its element type is zero-sized.
-			if u.Len() > 0 {
-				stack = append(stack, u.Elem())
-			}
-
-		case *types.Struct:
-			// A struct is zero-sized if all its fields are zero-sized.
-			for i := range u.NumFields() {
-				stack = append(stack, u.Field(i).Type())
-			}
-
-		default:
-			// Other types (Basic, Chan, Interface, Map, Pointer, Signature, Slice, TypeParam)
-			// are not zero-sized.
-			return false
-		}
+// ZeroSized determines whether the type t is provably zero-sized.
+func ZeroSized(typ types.Type, depth int) bool {
+	if depth > maxDepth {
+		return false
 	}
 
-	return len(stack) == 0 // All types are zero-sized
-}
+	switch u := typ.Underlying().(type) {
+	case *types.Array:
+		if u.Len() > 0 {
+			return ZeroSized(u.Elem(), depth+1)
+		}
 
-// hasValueMethod checks if a type has any methods with a value receiver.
-func hasValueMethod(t types.Type) bool {
-	mset := types.NewMethodSet(t)
+		return true
 
-	return mset.Len() > 0
+	case *types.Struct:
+		for field := range u.Fields() {
+			if !ZeroSized(field.Type(), depth+1) {
+				return false
+			}
+		}
+
+		return true
+
+	default:
+		return false
+	}
 }

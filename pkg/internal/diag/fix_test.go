@@ -236,8 +236,7 @@ func assertFix(t *testing.T, fixes []analysis.SuggestedFix, expectNil bool, expe
 		t.Fatalf("expected 1 text edit, got %d", len(fix.TextEdits))
 	}
 
-	edit := fix.TextEdits[0]
-	if string(edit.NewText) != expectedNewText {
+	if edit := fix.TextEdits[0]; string(edit.NewText) != expectedNewText {
 		t.Errorf("edit.NewText = %q, want %q", string(edit.NewText), expectedNewText)
 	}
 }

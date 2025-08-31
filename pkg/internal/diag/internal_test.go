@@ -27,8 +27,7 @@ func TestDiag_Print(t *testing.T) {
 	info, pkg, fset, astFile := parseSource(t, "main.go", "package main")
 	d := newTestDiag(t, info, pkg, fset, astFile)
 
-	err := d.Fprint(io.Discard, astFile)
-	if err != nil {
+	if err := d.Fprint(io.Discard, astFile); err != nil {
 		t.Errorf("Got error %v printing test file", err)
 	}
 }

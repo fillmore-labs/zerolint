@@ -123,6 +123,7 @@ func (c calc) processExcludedValueSpec(genDecl *ast.GenDecl, excludedTypeDefs se
 		}
 
 		var tn *types.TypeName
+
 		switch t := tv.Type.(type) {
 		case *types.Named:
 			tn = t.Obj()

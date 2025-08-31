@@ -47,8 +47,7 @@ func TestAnalyzerWithExcludedFlag(t *testing.T) {
 		t.Fatalf("expected 1 result, got %d", len(result))
 	}
 
-	err := result[0].Action.Err
-	if !errors.Is(err, fs.ErrNotExist) {
+	if err := result[0].Action.Err; !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("wanted %v, got: %v", fs.ErrNotExist, err)
 	}
 }

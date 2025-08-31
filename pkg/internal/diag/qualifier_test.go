@@ -150,7 +150,6 @@ func TestQualifier_Qualifier(t *testing.T) { //nolint:funlen
 			}
 
 			targetPkgToQualify := tt.targetPkgProvider(currentPkg)
-			got := q.Qualifier(targetPkgToQualify)
 
 			var targetPkgPath string
 			if targetPkgToQualify == nil {
@@ -159,12 +158,13 @@ func TestQualifier_Qualifier(t *testing.T) { //nolint:funlen
 				targetPkgPath = targetPkgToQualify.Path()
 			}
 
-			if q.NeedsImport != tt.needsImport {
-				t.Errorf("Qualifier(%s) needsImport %t, want %t", targetPkgPath, q.NeedsImport, tt.needsImport)
+			if got, want := q.Qualifier(targetPkgToQualify), tt.want; got != want {
+				t.Errorf("Qualifier(%s) = %q, want %q", targetPkgPath, got, want)
 			}
 
-			if got != tt.want {
-				t.Errorf("Qualifier(%s) = %q, want %q", targetPkgPath, got, tt.want)
+			// Check side effect
+			if got, want := q.NeedsImport, tt.needsImport; got != want {
+				t.Errorf("Qualifier(%s) needsImport %t, want %t", targetPkgPath, got, want)
 			}
 		})
 	}

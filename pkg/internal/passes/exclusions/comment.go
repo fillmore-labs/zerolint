@@ -47,8 +47,7 @@ func HasExcludeComment(comments *ast.CommentGroup) bool {
 			continue
 		}
 
-		args := strings.Split(argsText, ",")
-		if slices.Contains(args, excludeDirective) {
+		if args := strings.Split(argsText, ","); slices.Contains(args, excludeDirective) {
 			return true
 		}
 	}

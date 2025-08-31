@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build go1.24
-
 package zerolint_test
 
 import (
@@ -51,8 +49,7 @@ func TestOptions(t *testing.T) {
 
 	l.InfoContext(t.Context(), "test", "options", opts)
 
-	got := buf.String()
-	if len(got) == 0 {
+	if got := buf.String(); len(got) == 0 {
 		t.Errorf("Expected non-empty log, got: %v", got)
 	}
 }

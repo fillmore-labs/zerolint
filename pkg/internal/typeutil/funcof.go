@@ -31,26 +31,16 @@ func FuncOf(info *types.Info, ex ast.Expr) (fun *types.Func, methodExpr, ok bool
 			return fun, false, ok
 
 		case *ast.SelectorExpr:
-			sel, ok := info.Selections[e]
-			if !ok { // e.Sel is an identifier qualified by e.X
-				fun, ok = info.Uses[e.Sel].(*types.Func) // types.Checker calls recordUse for e.Sel from recordSelection.
-
-				return fun, false, ok
+			fun, ok = info.Uses[e.Sel].(*types.Func) // types.Checker calls recordUse for e.Sel from recordSelection.
+			if !ok {
+				return nil, false, false // struct field selector
 			}
 
-			switch sel.Kind() { //nolint:exhaustive
-			case types.MethodVal: // e.Sel is a method selector
-				fun, ok = sel.Obj().(*types.Func)
-
-				return fun, false, ok
-
-			case types.MethodExpr: // e.Sel is a method expression
-				fun, ok = sel.Obj().(*types.Func)
-
-				return fun, true, ok
+			if sel, isSel := info.Selections[e]; isSel {
+				return fun, sel.Kind() == types.MethodExpr, true
 			}
 
-			return nil, false, false // e.Sel is a struct field selector
+			return fun, false, true // e.Sel is a function qualified by e.X
 
 		case *ast.IndexExpr: // Generic function instantiation with a type parameter ("myFunc[T]").
 			if !info.Types[e.Index].IsType() {

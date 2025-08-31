@@ -47,8 +47,7 @@ func TestReport(t *testing.T) {
 
 			called = true
 
-			expectedMessage := "Test message (zl:test+)"
-			if diag.Message != expectedMessage {
+			if expectedMessage := "Test message (zl:test+)"; diag.Message != expectedMessage {
 				t.Errorf("expected message %q, got %q", expectedMessage, diag.Message)
 			}
 

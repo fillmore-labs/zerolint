@@ -51,7 +51,7 @@ To check the current package for basic problems with pointers to zero-sized type
 
 	zerolint .
 
-To fix all issues across packages, unsing an exclude file:
+To fix all issues across packages, using an exclude file:
 
 	zerolint -level=full -exclude=excludes.txt -fix ./...
 */

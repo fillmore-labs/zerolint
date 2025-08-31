@@ -133,8 +133,7 @@ var _ = a[0]()`,
 				t.Fatal("FuncOf() fun is nil, but wantOk is true")
 			}
 
-			funcName := fun.FullName()
-			if funcName != tt.wantFuncName {
+			if funcName := fun.FullName(); funcName != tt.wantFuncName {
 				t.Errorf("FuncOf() fun.FullName() = %q, want %q", funcName, tt.wantFuncName)
 			}
 

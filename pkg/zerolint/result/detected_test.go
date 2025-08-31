@@ -57,15 +57,14 @@ func TestResult(t *testing.T) {
 
 			d := New(tt.input)
 
-			empty := d.Empty()
-			sorted := d.Sorted()
-
-			if empty != (tt.wantLen == 0) {
-				t.Errorf("Expected Empty() to be %t, got %t", tt.wantLen == 0, empty)
+			if got, want := d.Empty(), tt.wantLen == 0; got != want {
+				t.Errorf("Expected Empty() to be %t, got %t", want, got)
 			}
 
-			if len(sorted) != tt.wantLen {
-				t.Errorf("Expected Sorted() to return slice of length %d, got %d", tt.wantLen, len(sorted))
+			sorted := d.Sorted()
+
+			if got, want := len(sorted), tt.wantLen; got != want {
+				t.Errorf("Expected Sorted() to return slice of length %d, got %d", want, got)
 			}
 
 			if !slices.IsSorted(sorted) {

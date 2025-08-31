@@ -210,8 +210,7 @@ type ExcludableEmptyStruct struct{}
 				}
 			}
 
-			_, cachedZeroSized := c.ZeroSizedType(typ)
-			if cachedZeroSized != gotZeroSized {
+			if _, cachedZeroSized := c.ZeroSizedType(typ); cachedZeroSized != gotZeroSized {
 				t.Errorf("ZeroSizedType() cachedZeroSized = %v, want %v for type %s", cachedZeroSized, gotZeroSized, typ.String())
 			}
 		})

@@ -63,7 +63,7 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 	}{
 		{"basic", args{level: level.Basic, regex: testre, pkg: "test/basic"}, "test/basic.myError (value methods)"},
 		{"full", args{level: level.Full, excludes: set.New(excludedTypeNames...), pkg: "test/a"}, "[0]string"},
-		{"exclusions", args{level: level.Full, pkg: "test/e"}, ""},
+		{"exclusions", args{level: level.Full, pkg: "test/e"}, "test/e.NotExcluded"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,7 +79,6 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 			if tt.args.regex != nil && tt.args.regex.String() != "" {
 				v.Check.Regex = tt.args.regex
 			}
-
 			a := &analysis.Analyzer{
 				Name:       "zerolint",
 				Doc:        "...",
@@ -90,16 +89,9 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 
 			res := analysistest.RunWithSuggestedFixes(t, dir, a, tt.args.pkg)
 
-			if tt.want != "" {
-				d := res[0].Result.(result.Detected) //nolint:forcetypeassert
-				if d.Empty() {
-					t.Error("Expected detection of zero-sized types")
-				}
-
-				zerotypes := d.Sorted()
-				if !slices.Contains(zerotypes, tt.want) {
-					t.Errorf("Expected %q to contain %q", zerotypes, tt.want)
-				}
+			d := res[0].Result.(result.Detected) //nolint:forcetypeassert
+			if zerotypes := d.Sorted(); !slices.Contains(zerotypes, tt.want) {
+				t.Errorf("Expected %q to contain %q", zerotypes, tt.want)
 			}
 		})
 	}

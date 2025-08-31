@@ -43,12 +43,11 @@ func TestUnset(t *testing.T) {
 	t.Parallel()
 
 	// given
-	s := New[int]()
 
 	// when
 
 	// then
-	if s.Contains(1) {
+	if s := New[int](); s.Contains(1) {
 		t.Error("Expected 1 to be unset")
 	}
 }

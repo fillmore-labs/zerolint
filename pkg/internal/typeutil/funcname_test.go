@@ -124,8 +124,7 @@ func TestNewFuncName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			name := NewFuncName(tt.fun)
-			if name.String() != tt.wantFuncName {
+			if name := NewFuncName(tt.fun); name.String() != tt.wantFuncName {
 				t.Errorf("NewFuncName() = %q, want %q", name, tt.wantFuncName)
 			}
 		})

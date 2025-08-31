@@ -18,7 +18,7 @@ package msg
 
 import "fillmore-labs.com/zerolint/pkg/internal/diag"
 
-//nolint:godot,revive
+//nolint:godot,revive,godoclint
 const (
 	// keep-sorted start
 	CatAddress             diag.Category = "add"

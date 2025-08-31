@@ -81,11 +81,9 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 
 	for valueSpec := range inspector.All[*ast.ValueSpec](in) {
-		t := pass.TypesInfo.TypeOf(valueSpec.Type)
-
 		var tn *types.TypeName
 
-		switch t := t.(type) {
+		switch t := pass.TypesInfo.TypeOf(valueSpec.Type); t := t.(type) {
 		case *types.Named:
 			tn = t.Obj()
 

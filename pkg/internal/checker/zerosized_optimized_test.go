@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build go1.24
-
 package checker_test
 
 import "go/types"
@@ -78,9 +76,7 @@ func isZeroSizedSemiOptimized(t types.Type) bool {
 
 // isZeroSizedOptimized uses a stack only for deeply nested structs.
 func isZeroSizedOptimized(t types.Type) bool {
-	typ := t
-
-	for {
+	for typ := t; ; {
 		switch u := typ.Underlying().(type) {
 		case *types.Array:
 			if u.Len() == 0 {
@@ -110,16 +106,10 @@ func isZeroSizedOptimized(t types.Type) bool {
 func isZeroSizedStructOnly(s *types.Struct) bool {
 	const initialStackCapacity = 10
 
-	stack := make([]*types.Struct, 0, initialStackCapacity)
-
-	top := s
-
-	for {
-		for i := range top.NumFields() {
-			ft := top.Field(i).Type()
-
+	for top, stack := s, make([]*types.Struct, 0, initialStackCapacity); ; {
+		for field := range top.Fields() {
 		fieldLoop:
-			for {
+			for ft := field.Type(); ; {
 				switch uft := ft.Underlying().(type) {
 				case *types.Array:
 					if uft.Len() == 0 {

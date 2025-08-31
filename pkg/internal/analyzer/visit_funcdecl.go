@@ -76,12 +76,10 @@ func (v *Visitor) visitFuncRecv(n *ast.FuncDecl) {
 		return
 	}
 
-	isErr := isErrorDecl(v.Diag.TypesInfo(), n)
-
 	var cM diag.CategorizedMessage
 
 	switch {
-	case isErr:
+	case isErrorDecl(v.Diag.TypesInfo(), n):
 		cM = msg.Formatf(msg.CatError, valueMethod, "error interface implemented on pointer to zero-sized type %q", elem)
 
 	case v.Level.Below(level.Extended):
@@ -114,13 +112,11 @@ func (v *Visitor) visitFuncRecv(n *ast.FuncDecl) {
 func isErrorDecl(info *types.Info, funcdecl *ast.FuncDecl) bool {
 	const errorMethodName = "Error"
 
-	recv := funcdecl.Recv
-	if recv == nil || len(recv.List) != 1 || len(recv.List[0].Names) > 1 {
+	if recv := funcdecl.Recv; recv == nil || len(recv.List) != 1 || len(recv.List[0].Names) > 1 {
 		return false // Not a method
 	}
 
-	name := funcdecl.Name.Name
-	if name != errorMethodName {
+	if name := funcdecl.Name.Name; name != errorMethodName {
 		return false // Wrong name
 	}
 

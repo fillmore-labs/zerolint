@@ -81,6 +81,7 @@ func nestedReturn() {
 
 			// Find the function declaration we want to test
 			var targetNode ast.Node
+
 			for fn := range typeutil.AllDecls[*ast.FuncDecl](files) {
 				if fn.Name.Name == tc.funcName {
 					targetNode = fn

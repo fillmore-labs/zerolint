@@ -24,9 +24,8 @@ func TestDiag_TypesInfo(t *testing.T) {
 	t.Parallel()
 
 	info, pkg, fset, astFile := parseSource(t, "main.go", "package main")
-	d := newTestDiag(t, info, pkg, fset, astFile)
 
-	if d.TypesInfo() != info {
+	if d := newTestDiag(t, info, pkg, fset, astFile); d.TypesInfo() != info {
 		t.Errorf("TypesInfo() = %v, want %v", d.TypesInfo(), info)
 	}
 }

@@ -28,8 +28,7 @@ func (v *Visitor) visitBuiltin(n *ast.CallExpr) bool {
 		return true
 	}
 
-	fun, ok := ast.Unparen(n.Fun).(*ast.Ident)
-	if !ok || fun.Name != "new" {
+	if fun, ok := ast.Unparen(n.Fun).(*ast.Ident); !ok || fun.Name != "new" {
 		return true
 	}
 

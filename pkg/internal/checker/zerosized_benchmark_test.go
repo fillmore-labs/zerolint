@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build go1.24
-
 package checker_test
 
 import (
@@ -70,11 +68,11 @@ func BenchmarkIsZeroSized(b *testing.B) {
 	for _, tc := range testCases {
 		typ := parseType(b, tc.typeStr)
 
-		b.Run(tc.name+"/Plain", func(b *testing.B) {
+		b.Run(tc.name+"/Recursive", func(b *testing.B) {
 			b.ReportAllocs()
 
 			for b.Loop() {
-				result = IsZeroSized(typ)
+				result = ZeroSized(typ, 0)
 			}
 		})
 		b.Run(tc.name+"/SemiOptimized", func(b *testing.B) {
@@ -89,6 +87,13 @@ func BenchmarkIsZeroSized(b *testing.B) {
 
 			for b.Loop() {
 				result = isZeroSizedOptimized(typ)
+			}
+		})
+		b.Run(tc.name+"/Plain", func(b *testing.B) {
+			b.ReportAllocs()
+
+			for b.Loop() {
+				result = isZeroSizedPlain(typ)
 			}
 		})
 	}

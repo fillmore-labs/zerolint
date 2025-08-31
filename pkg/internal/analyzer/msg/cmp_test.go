@@ -75,9 +75,7 @@ func TestComparisonMessage(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := ComparisonMessage(tc.left, tc.right, tc.valueMethod)
-
-			if !strings.Contains(got.Message, tc.want) {
+			if got := ComparisonMessage(tc.left, tc.right, tc.valueMethod); !strings.Contains(got.Message, tc.want) {
 				t.Errorf("ComparisonMessage() returned %q, does not contain %q", got.Message, tc.want)
 			}
 		})
@@ -127,9 +125,7 @@ func TestComparisonMessagePointerInterface(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := ComparisonMessagePointerInterface(tc.elemOp, tc.interfaceOp, tc.valueMethod)
-
-			if !strings.Contains(got.Message, tc.want) {
+			if got := ComparisonMessagePointerInterface(tc.elemOp, tc.interfaceOp, tc.valueMethod); !strings.Contains(got.Message, tc.want) {
 				t.Errorf("ComparisonMessagePointerInterface() returned %q, does not contain %q", got.Message, tc.want)
 			}
 		})
