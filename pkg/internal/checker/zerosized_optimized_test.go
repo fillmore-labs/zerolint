@@ -30,9 +30,7 @@ func isZeroSizedSemiOptimized(t types.Type) bool {
 		maxIterations = 100
 	)
 
-	stack := make([]types.Type, 0, initialStackCapacity)
-
-	top := t
+	top, stack := t, make([]types.Type, 0, initialStackCapacity)
 	for range maxIterations {
 		switch u := top.Underlying().(type) {
 		case *types.Array:
@@ -67,8 +65,7 @@ func isZeroSizedSemiOptimized(t types.Type) bool {
 		}
 
 		// pop next type to check
-		top = stack[l-1]
-		stack = stack[:l-1]
+		top, stack = stack[l-1], stack[:l-1]
 	}
 
 	return false // too expensive
@@ -129,12 +126,13 @@ func isZeroSizedStructOnly(s *types.Struct) bool {
 			}
 		}
 
-		l := len(stack)
-		if l == 0 {
-			return true
+		if l := len(stack); l > 0 {
+			top, stack = stack[l-1], stack[:l-1]
+			continue
 		}
 
-		top = stack[l-1]
-		stack = stack[:l-1]
+		break
 	}
+
+	return true
 }
