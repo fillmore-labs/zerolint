@@ -30,9 +30,7 @@ func isZeroSizedSemiOptimized(t types.Type) bool {
 		maxIterations = 100
 	)
 
-	stack := make([]types.Type, 0, initialStackCapacity)
-
-	top := t
+	top, stack := t, make([]types.Type, 0, initialStackCapacity)
 	for range maxIterations {
 		switch u := top.Underlying().(type) {
 		case *types.Array:
@@ -67,8 +65,7 @@ func isZeroSizedSemiOptimized(t types.Type) bool {
 		}
 
 		// pop next type to check
-		top = stack[l-1]
-		stack = stack[:l-1]
+		top, stack = stack[l-1], stack[:l-1]
 	}
 
 	return false // too expensive
@@ -108,24 +105,22 @@ func isZeroSizedStructOnly(s *types.Struct) bool {
 
 	for top, stack := s, make([]*types.Struct, 0, initialStackCapacity); ; {
 		for field := range top.Fields() {
-		fieldLoop:
-			for ft := field.Type(); ; {
-				switch uft := ft.Underlying().(type) {
-				case *types.Array:
-					if uft.Len() == 0 {
-						break fieldLoop
-					}
+			ft := field.Type()
 
+		fieldLoop:
+			switch uft := ft.Underlying().(type) {
+			case *types.Array:
+				if uft.Len() > 0 {
 					ft = uft.Elem()
 
-				case *types.Struct:
-					stack = append(stack, uft)
-
-					break fieldLoop
-
-				default:
-					return false
+					goto fieldLoop
 				}
+
+			case *types.Struct:
+				stack = append(stack, uft)
+
+			default:
+				return false
 			}
 		}
 
@@ -134,7 +129,6 @@ func isZeroSizedStructOnly(s *types.Struct) bool {
 			return true
 		}
 
-		top = stack[l-1]
-		stack = stack[:l-1]
+		top, stack = stack[l-1], stack[:l-1]
 	}
 }
