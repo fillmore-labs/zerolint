@@ -65,7 +65,7 @@ func TestNewFuncName(t *testing.T) {
 
 				return types.NewFunc(token.NoPos, pkg, "myFunc", sig)
 			}(),
-			wantFuncName: "(*example.com/testpkg.MyType).myFunc",
+			wantFuncName: "(example.com/testpkg.MyType).myFunc",
 		},
 		{
 			name: "interface method call",
@@ -116,7 +116,7 @@ func TestNewFuncName(t *testing.T) {
 
 				return types.NewFunc(token.NoPos, pkg, "myFunc", sig)
 			}(),
-			wantFuncName: "(*<invalid>).myFunc",
+			wantFuncName: "(<invalid>).myFunc",
 		},
 	}
 

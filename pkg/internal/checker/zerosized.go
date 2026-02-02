@@ -154,16 +154,16 @@ func ZeroSized(typ types.Type, depth int) bool {
 		return false
 	}
 
-	switch u := typ.Underlying().(type) {
+	switch typ := typ.Underlying().(type) {
 	case *types.Array:
-		if u.Len() > 0 {
-			return ZeroSized(u.Elem(), depth+1)
+		if typ.Len() == 0 {
+			return true
 		}
 
-		return true
+		return ZeroSized(typ.Elem(), depth+1)
 
 	case *types.Struct:
-		for field := range u.Fields() {
+		for field := range typ.Fields() {
 			if !ZeroSized(field.Type(), depth+1) {
 				return false
 			}

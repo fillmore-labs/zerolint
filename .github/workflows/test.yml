@@ -23,12 +23,13 @@ jobs:
         go: ["1.26", "1.25", "1.24"]
         include:
           - go: "1.26"
-            go-version: "1.26.0-rc.2"
+            go-version: "1.26.0"
             latest: true
           - go: "1.25"
-            go-version: "1.25.6"
+            go-version: "1.25.7"
           - go: "1.24"
-            go-version: "1.24.12"
+            go-version: "1.24.13"
+            legacy: true
     env:
       GOTOOLCHAIN: local
     steps:
@@ -47,12 +48,13 @@ jobs:
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         if: ${{ matrix.latest }}
         with:
-          version: v2.8.0
+          version: v2.9.0
           verify: false
+      - name: ⬇️ Download test packages
+        run: (cd ./pkg/internal/analyzer/testdata && go mod download)
+        if: ${{ !matrix.legacy }}
       - name: 🔨 Test
-        run: |
-          (cd ./pkg/internal/analyzer/testdata && go mod download)
-          go test -coverpkg ./... -coverprofile=cover.out ./...
+        run: go test -coverpkg ./... -coverprofile=cover.out ./...
       - name: 🧑🏻‍💻 codecov
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         if: ${{ matrix.latest }}
@@ -62,6 +64,7 @@ jobs:
           slug: fillmore-labs/zerolint
       - name: 🛜 Dependencies
         uses: actions/go-dependency-submission@f35d5c9af13ce9cc32f7930b171e315e878f6921 # v2.0.3
+        continue-on-error: true
         if: ${{ matrix.latest }}
         with:
           go-mod-path: go.mod
