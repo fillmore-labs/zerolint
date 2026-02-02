@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package plugin
+package gclplugin
 
 import (
 	"regexp"
@@ -22,8 +22,8 @@ import (
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 
-	"fillmore-labs.com/zerolint/pkg/zerolint"
-	"fillmore-labs.com/zerolint/pkg/zerolint/level"
+	zerolint "fillmore-labs.com/zerolint/analyzer"
+	"fillmore-labs.com/zerolint/analyzer/level"
 )
 
 func init() {

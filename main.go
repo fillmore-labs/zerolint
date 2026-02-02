@@ -19,7 +19,7 @@ package main
 import (
 	"golang.org/x/tools/go/analysis/singlechecker"
 
-	"fillmore-labs.com/zerolint/pkg/zerolint"
+	zerolint "fillmore-labs.com/zerolint/analyzer"
 )
 
 func main() {
