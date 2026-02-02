@@ -33,7 +33,7 @@ func TestNewFuncName(t *testing.T) {
 	emptystruct := types.NewStruct(nil, nil)
 	named := types.NewNamed(typeName, emptystruct, nil)
 
-	tests := []struct {
+	tests := [...]struct {
 		name         string
 		fun          *types.Func
 		wantFuncName string

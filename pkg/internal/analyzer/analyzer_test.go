@@ -56,7 +56,7 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 
 	testre := regexp.MustCompile("^test/.*$")
 
-	tests := []struct {
+	tests := [...]struct {
 		name string
 		args args
 		want string

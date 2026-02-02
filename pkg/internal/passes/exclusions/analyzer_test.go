@@ -49,7 +49,7 @@ func TestExclusionsAnalyzer(t *testing.T) {
 
 	dir := analysistest.TestData()
 
-	tests := []struct {
+	tests := [...]struct {
 		name     string
 		analyzer *analysis.Analyzer
 		pkg      string

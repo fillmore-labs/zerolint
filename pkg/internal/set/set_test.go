@@ -80,7 +80,7 @@ func TestSorted(t *testing.T) {
 		s Set[int]
 	}
 
-	tests := []struct {
+	tests := [...]struct {
 		name string
 		args args
 		want []int
@@ -105,7 +105,7 @@ func TestAllSorted(t *testing.T) {
 		s Set[int]
 	}
 
-	tests := []struct {
+	tests := [...]struct {
 		name string
 		args args
 		want []int

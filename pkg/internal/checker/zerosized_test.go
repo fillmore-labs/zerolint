@@ -70,7 +70,7 @@ type ExcludableEmptyStruct struct{}
 `
 	pkg := parseSource(t, "test.go", src)
 
-	tests := []struct {
+	tests := [...]struct {
 		name             string
 		getTypeFn        func() types.Type
 		setupChecker     func(c *Checker)
@@ -243,7 +243,7 @@ type PtrToExcludableEmptyStruct *ExcludableEmptyStruct
 `
 	pkg := parseSource(t, "test.go", src)
 
-	tests := []struct {
+	tests := [...]struct {
 		name             string
 		getTypeFn        func() types.Type
 		setupChecker     func(c *Checker)

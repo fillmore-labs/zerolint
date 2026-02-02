@@ -1,0 +1,16 @@
+---
+version: v2.8.0
+
+name: golangci-lint
+destination: .
+
+plugins:
+  - module: fillmore-labs.com/zerolint
+    import: fillmore-labs.com/zerolint/gclplugin
+    path: .
+  - module: fillmore-labs.com/scopeguard
+    import: fillmore-labs.com/scopeguard/gclplugin
+    version: v0.0.5
+  - module: fillmore-labs.com/errortype
+    import: fillmore-labs.com/errortype/gclplugin
+    version: v0.0.9

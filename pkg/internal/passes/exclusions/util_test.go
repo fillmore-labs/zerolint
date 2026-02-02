@@ -31,7 +31,7 @@ type myFact struct{ value int }
 
 func (*myFact) AFact() {}
 
-type otherFact struct{}
+type otherFact struct{ value int }
 
 func (*otherFact) AFact() {}
 
@@ -48,7 +48,7 @@ func TestAllFacts(t *testing.T) {
 		}
 		switch i {
 		case 1:
-			fact.Fact = &otherFact{}
+			fact.Fact = &otherFact{value: i + 1}
 
 		default:
 			fact.Fact = &myFact{value: i + 1}

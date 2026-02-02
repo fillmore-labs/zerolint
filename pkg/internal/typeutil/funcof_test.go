@@ -17,6 +17,7 @@
 package typeutil_test
 
 import (
+	"go/ast"
 	"testing"
 
 	. "fillmore-labs.com/zerolint/pkg/internal/typeutil"
@@ -25,7 +26,7 @@ import (
 func TestFuncOf(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name           string
 		src            string
 		wantFuncName   string
@@ -115,7 +116,8 @@ var _ = a[0]()`,
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			info, _, _, astFile := parseSource(t, tt.src)
+			fset, astFile := parseSource(t, tt.src)
+			_, info := checkSource(t, fset, []*ast.File{astFile})
 			callExpr := lastDeclCallExpr(astFile)
 
 			fun, methodExpr, ok := FuncOf(info, callExpr.Fun)
@@ -142,4 +144,14 @@ var _ = a[0]()`,
 			}
 		})
 	}
+}
+
+//nolint:forcetypeassert
+func lastDeclCallExpr(f *ast.File) *ast.CallExpr {
+	lastDecl := f.Decls[len(f.Decls)-1]
+	genDecl := lastDecl.(*ast.GenDecl)
+	valSpec := genDecl.Specs[0].(*ast.ValueSpec)
+	callExpr := valSpec.Values[0].(*ast.CallExpr)
+
+	return callExpr
 }

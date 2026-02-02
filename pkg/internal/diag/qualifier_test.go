@@ -28,7 +28,7 @@ import (
 func TestQualifier_Qualifier(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name              string
 		currentPkgPath    string
 		currentFileSrc    string

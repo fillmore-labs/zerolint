@@ -65,7 +65,7 @@ func TestReadExcludes(t *testing.T) {
 		name string
 	}
 
-	tests := []struct {
+	tests := [...]struct {
 		name    string
 		args    args
 		want    []string
@@ -101,7 +101,7 @@ func TestReadExcludes(t *testing.T) {
 func TestAllText(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name      string
 		input     string
 		want      []string

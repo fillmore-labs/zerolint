@@ -57,7 +57,7 @@ func nestedReturn() {
 `
 	fset := token.NewFileSet()
 
-	file, err := parser.ParseFile(fset, "main.go", src, 0)
+	file, err := parser.ParseFile(fset, "main.go", src, parser.SkipObjectResolution)
 	if err != nil {
 		t.Fatalf("failed to parse source: %v", err)
 	}
@@ -65,7 +65,7 @@ func nestedReturn() {
 	files := []*ast.File{file}
 	root := inspector.New(files).Root()
 
-	testCases := []struct {
+	testCases := [...]struct {
 		funcName string
 		want     int
 	}{

@@ -1,8 +1,8 @@
 # Zerolint
 
 [![Go Reference](https://pkg.go.dev/badge/fillmore-labs.com/zerolint.svg)](https://pkg.go.dev/fillmore-labs.com/zerolint)
-[![Test](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yml)
-[![CodeQL](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql)
+[![Test](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yml?query=branch%3Amain)
+[![CodeQL](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/fillmore-labs/zerolint/branch/main/graph/badge.svg?token=TUE1BL1QZV)](https://codecov.io/gh/fillmore-labs/zerolint)
 [![Go Report Card](https://goreportcard.com/badge/fillmore-labs.com/zerolint)](https://goreportcard.com/report/fillmore-labs.com/zerolint)
 [![License](https://img.shields.io/github/license/fillmore-labs/zerolint)](https://www.apache.org/licenses/LICENSE-2.0)

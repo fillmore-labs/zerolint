@@ -41,7 +41,7 @@ func TestAnalyzer(t *testing.T) { //nolint:funlen
 		t.Fatalf("Can't find excludes file: %v", err)
 	}
 
-	tests := []struct {
+	tests := [...]struct {
 		name    string
 		options Options
 		flags   map[string]string

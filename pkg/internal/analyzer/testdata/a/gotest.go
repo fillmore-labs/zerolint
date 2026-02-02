@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+	"gotest.tools/v3/assert/cmp"
 )
 
 func TestGoTestTools(t *testing.T) {
@@ -30,4 +31,6 @@ func TestGoTestTools(t *testing.T) {
 	assert.ErrorIs(t, ErrOne, ErrTwo) // want " \\(zl:cmp\\)$"
 
 	assert.Equal(t, ErrOne, ErrOne) // want " \\(zl:cmp\\)$"
+
+	cmp.Equal(ErrOne, ErrOne) // want " \\(zl:cmp\\)$"
 }

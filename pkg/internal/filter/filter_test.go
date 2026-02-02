@@ -41,7 +41,7 @@ func TestFilter_ExcludedType(t *testing.T) { //nolint:funlen
 	typeNameExcluded := types.NewTypeName(pos1, pkg, "ExcludedType", nil)
 	typeNameNotExcluded := types.NewTypeName(pos2, pkg, "NotExcludedType", nil)
 
-	tests := []struct {
+	tests := [...]struct {
 		name     string
 		filter   Filter
 		typeName *types.TypeName

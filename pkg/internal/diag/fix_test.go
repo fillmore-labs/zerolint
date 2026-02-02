@@ -30,7 +30,7 @@ import (
 func TestDiag_ReplaceWithZeroValue(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name            string
 		src             string
 		findNodeAndType func(f *ast.File, pkg *types.Package, info *types.Info) (ast.Node, types.Type)
@@ -110,7 +110,7 @@ func TestDiag_ReplaceWithZeroValue(t *testing.T) { //nolint:funlen
 func TestDiag_RemoveOp(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name            string
 		src             string
 		findNodes       func(f *ast.File, info *types.Info) (ast.Node, ast.Expr) // n, x
@@ -159,7 +159,7 @@ func TestDiag_RemoveOp(t *testing.T) {
 func TestDiag_MakePure(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name            string
 		src             string
 		findNodes       func(f *ast.File, info *types.Info) (ast.Node, ast.Expr) // n, x (type expr)

@@ -39,7 +39,7 @@ since the caller caches the result of the zero-size analysis for each type.
 Run with `go test -bench=BenchmarkIsZeroSized ./pkg/internal/checker`.
 */
 func BenchmarkIsZeroSized(b *testing.B) {
-	testCases := []struct {
+	testCases := [...]struct {
 		name    string
 		typeStr string
 	}{

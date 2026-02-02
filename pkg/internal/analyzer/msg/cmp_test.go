@@ -34,7 +34,7 @@ func TestComparisonMessage(t *testing.T) {
 	namedStructType := types.NewNamed(types.NewTypeName(token.NoPos, pkg, "MyStruct", nil), structType, nil)
 	anotherNamedStructType := types.NewNamed(types.NewTypeName(token.NoPos, pkg, "MyOtherStruct", nil), structType, nil)
 
-	testCases := []struct {
+	testCases := [...]struct {
 		name        string
 		left        types.Type
 		right       types.Type
@@ -91,7 +91,7 @@ func TestComparisonMessagePointerInterface(t *testing.T) {
 	errorType := types.Universe.Lookup("error").Type()
 	emptyInterface := types.NewInterfaceType(nil, nil)
 
-	testCases := []struct {
+	testCases := [...]struct {
 		name        string
 		elemOp      types.Type
 		interfaceOp types.Type

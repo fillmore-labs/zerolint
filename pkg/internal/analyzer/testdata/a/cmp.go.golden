@@ -27,6 +27,7 @@ import (
 	experrors "golang.org/x/exp/errors"
 	"golang.org/x/xerrors"
 	gotest "gotest.tools/v3/assert"
+	"gotest.tools/v3/assert/cmp"
 )
 
 type cmpErr struct{}
@@ -93,6 +94,8 @@ func TestCmp(t *testing.T) {
 
 	gotest.Equal(t, cmpErr{}, cmpErr{})   // want " \\(zl:cmp\\)$" "\\(zl:add\\)$" "\\(zl:add\\)$"
 	gotest.ErrorIs(t, cmpErr{}, cmpErr{}) // want " \\(zl:cmp\\)$" "\\(zl:add\\)$" "\\(zl:add\\)$"
+
+	cmp.Equal(cmpErr{}, cmpErr{}) // want " \\(zl:cmp\\)$" "\\(zl:add\\)$" "\\(zl:add\\)$"
 
 	assert.ErrorIs(wrapt(t, cmpErr{}, cmpErr{})) // want "\\(zl:add\\)$" "\\(zl:add\\)$"
 	s.ErrorIs(wrap(cmpErr{}, cmpErr{}))          // want "\\(zl:add\\)$" "\\(zl:add\\)$"

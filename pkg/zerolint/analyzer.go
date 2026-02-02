@@ -74,9 +74,9 @@ func New(opts ...Option) *analysis.Analyzer {
 		}
 
 		// Use programmatic options as defaults for flags.
-		a.Flags.TextVar(&o.level, "level", o.level, "analysis level (Default, Extended, Full)")
-		a.Flags.TextVar(o.regex, "match", o.regex, "only check types matching this regex, useful with -fix")
-		a.Flags.Func("excluded", "read excluded types from this file", o.readExcludedFile)
+		a.Flags.TextVar(&o.level, "level", o.level, "analysis `level` (basic, extended, full)")
+		a.Flags.TextVar(o.regex, "match", o.regex, "only check types matching this `regex`, useful with -fix")
+		a.Flags.Func("excluded", "read excluded types from this `file`", o.readExcludedFile)
 		a.Flags.BoolVar(&o.zeroTrace, "zerotrace", o.zeroTrace, "trace found zero-sized types")
 		a.Flags.BoolVar(&o.generated, "generated", o.generated, "check generated files")
 	}

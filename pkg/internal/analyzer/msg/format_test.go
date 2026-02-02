@@ -30,7 +30,7 @@ import (
 func TestFormatf(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name        string
 		cat         diag.Category
 		valueMethod bool
@@ -111,7 +111,7 @@ func TestFormatter(t *testing.T) {
 	ident1 := &ast.Ident{NamePos: token.NoPos, Name: "one"}
 	ident2 := &ast.Ident{NamePos: token.NoPos, Name: "two"}
 
-	tests := []struct {
+	tests := [...]struct {
 		name      string
 		formatter Formatter
 	}{

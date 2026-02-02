@@ -30,13 +30,13 @@ Usage:
 
 The flags are:
 
-	-level value
-		analysis level (Basic, Extended, Full) (default Basic)
+	-level level
+		analysis level (basic, extended, full) (default Basic)
 	-fix
 		apply all suggested fixes
 	-excluded file
 		read excluded types from this file
-	-match value
+	-match regex
 		only check types matching this regex, useful with -fix
 	-generated
 		check generated files
@@ -53,6 +53,6 @@ To check the current package for basic problems with pointers to zero-sized type
 
 To fix all issues across packages, using an exclude file:
 
-	zerolint -level=full -exclude=excludes.txt -fix ./...
+	zerolint -level=full -excluded=excludes.txt -fix ./...
 */
 package main

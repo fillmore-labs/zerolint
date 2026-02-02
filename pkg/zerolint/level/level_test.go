@@ -26,7 +26,7 @@ import (
 func TestLintLevel_UnmarshalText(t *testing.T) { //nolint:funlen
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name      string
 		text      []byte
 		wantLevel LintLevel
@@ -115,7 +115,7 @@ func TestLintLevel_UnmarshalText(t *testing.T) { //nolint:funlen
 func TestLintLevel_MarshalText(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name    string
 		level   LintLevel
 		want    []byte
@@ -148,7 +148,7 @@ func TestLintLevel_MarshalText(t *testing.T) {
 func TestLintLevel_AtLeast(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name string
 		l    LintLevel
 		m    LintLevel
@@ -174,7 +174,7 @@ func TestLintLevel_AtLeast(t *testing.T) {
 func TestLintLevel_Below(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name string
 		l    LintLevel
 		m    LintLevel
@@ -200,7 +200,7 @@ func TestLintLevel_Below(t *testing.T) {
 func TestLintLevel_String(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name  string
 		level LintLevel
 		want  string

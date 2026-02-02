@@ -26,7 +26,7 @@ import (
 func TestResult(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	tests := [...]struct {
 		name    string
 		input   map[string]bool
 		wantLen int

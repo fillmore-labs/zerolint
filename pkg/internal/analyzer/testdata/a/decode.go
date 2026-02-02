@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 
 	ghodssyaml "github.com/ghodss/yaml"
-	goyaml "github.com/go-yaml/yaml"
 	yamlv2 "gopkg.in/yaml.v2"
 	yamlv3 "gopkg.in/yaml.v3"
 	k8syaml "sigs.k8s.io/yaml"
@@ -33,14 +32,11 @@ func Decode() {
 	ghodssyaml.Unmarshal(nil, &decodeEmpty{})
 	k8syaml.Unmarshal(nil, &decodeEmpty{})
 	k8syaml.UnmarshalStrict(nil, &decodeEmpty{})
-	goyaml.Unmarshal(nil, &decodeEmpty{})
-	goyaml.UnmarshalStrict(nil, &decodeEmpty{})
 	yamlv2.Unmarshal(nil, &decodeEmpty{})
 	yamlv2.UnmarshalStrict(nil, &decodeEmpty{})
 	yamlv3.Unmarshal(nil, &decodeEmpty{})
 
 	json.NewDecoder(nil).Decode(&decodeEmpty{})
-	goyaml.NewDecoder(nil).Decode(&decodeEmpty{})
 	yamlv2.NewDecoder(nil).Decode(&decodeEmpty{})
 	yamlv3.NewDecoder(nil).Decode(&decodeEmpty{})
 
