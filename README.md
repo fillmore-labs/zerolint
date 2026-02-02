@@ -1,9 +1,9 @@
 # Zerolint
 
 [![Go Reference](https://pkg.go.dev/badge/fillmore-labs.com/zerolint.svg)](https://pkg.go.dev/fillmore-labs.com/zerolint)
-[![Test](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yaml?query=branch%3Amain)
-[![CodeQL](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql/badge.svg?branch=main)](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/fillmore-labs/zerolint/branch/main/graph/badge.svg?token=TUE1BL1QZV)](https://codecov.io/gh/fillmore-labs/zerolint)
+[![Test](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yaml/badge.svg?branch=dev)](https://github.com/fillmore-labs/zerolint/actions/workflows/test.yaml?query=branch%3Adev)
+[![CodeQL](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql/badge.svg?branch=dev)](https://github.com/fillmore-labs/zerolint/actions/workflows/github-code-scanning/codeql?query=branch%3Adev)
+[![Coverage](https://codecov.io/gh/fillmore-labs/zerolint/branch/dev/graph/badge.svg?token=TUE1BL1QZV)](https://codecov.io/gh/fillmore-labs/zerolint)
 [![Go Report Card](https://goreportcard.com/badge/fillmore-labs.com/zerolint)](https://goreportcard.com/report/fillmore-labs.com/zerolint)
 [![License](https://img.shields.io/github/license/fillmore-labs/zerolint)](https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -161,7 +161,7 @@ instances based on their pointer values.
 #### Pitfalls of Zero-Sized Pointer Comparisons
 
 Internally, Go's runtime optimizes allocations of zero-sized types. It achieves this by
-[returning a pointer to a common static variable](https://cs.opensource.google/go/go/+/refs/tags/go1.26.0:src/runtime/malloc.go;l=1126-1129)
+[returning a pointer to a common static variable](https://cs.opensource.google/go/go/+/refs/tags/go1.26.2:src/runtime/malloc.go;l=1126-1129)
 (known as `runtime.zerobase`) rather than allocating new memory on the heap for each instance. A consequence of this
 optimization is that different pointers to zero-sized types (e.g., multiple uses of `&DivisionByZeroError{}` or
 `new(DivisionByZeroError)`) end up pointing to the same memory address. This can create the illusion that such pointers
@@ -398,7 +398,7 @@ Add a file `.custom-gcl.yaml` to your source with
 
 ```YAML
 ---
-version: v2.10.1
+version: v2.12.1
 
 name: golangci-lint
 destination: .
@@ -406,7 +406,7 @@ destination: .
 plugins:
   - module: fillmore-labs.com/zerolint
     import: fillmore-labs.com/zerolint/gclplugin
-    version: v0.0.16
+    version: v0.0.17
 ```
 
 Run `golangci-lint custom` to build a custom executable. Configure in `.golangci.yaml`:

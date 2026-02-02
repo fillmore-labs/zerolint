@@ -22,14 +22,12 @@ linters:
     # keep-sorted start
     - copyloopvar
     - errcheck
-    - errname
     - exptostd
     - gocheckcompilerdirectives
     - gochecksumtype
     - gocritic
     - godot
     - goheader
-    - gomoddirectives
     - gosec
     - govet
     - iface
@@ -51,7 +49,6 @@ linters:
     - tagliatelle
     - testableexamples
     - thelper
-    - tparallel
     - unconvert
     - unused
     - usestdlibvars
@@ -78,7 +75,6 @@ linters:
           scopes.
         original-url: https://fillmore-labs.com/scopeguard
         settings:
-          conservative: true
           max-lines: 10
       errortype:
         type: module
@@ -104,9 +100,9 @@ linters:
         const:
           AUTHOR: Oliver Eikemeier
         regexp:
-          RANGE: '((2025\-2026)|(2024\-2025)|2024|2025|2026)'
+          RANGE: ((202[45]-202[56])|202[456])
       template: |-
-        Copyright {{ RANGE }} {{ AUTHOR }}. All Rights Reserved.
+        Copyright {{RANGE}} {{AUTHOR}}. All Rights Reserved.
 
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
@@ -128,9 +124,13 @@ linters:
             - Fprint
           format:
             - Node
+      excludes:
+        - G304
+        - G703
     govet:
       enable-all: true
       disable:
+        - errorsas
         - fieldalignment
         - shadow
     nlreturn:
@@ -171,9 +171,13 @@ linters:
     tagliatelle:
       case:
         rules:
-          json: kebab
+          json: snake
           yaml: kebab
         use-field-name: true
+        overrides:
+          - pkg: gclplugin
+            rules:
+              json: kebab
     wsl_v5:
       disable:
         - assign

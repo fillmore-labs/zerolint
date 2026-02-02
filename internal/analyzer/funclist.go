@@ -92,4 +92,10 @@ var functions = map[typeutil.FuncName]funcType{ //nolint:gochecknoglobals
 	{Path: "gopkg.in/yaml.v3", Receiver: "Decoder", Name: "Decode"}:                            funcDecode,
 	{Path: "sigs.k8s.io/yaml", Name: "Unmarshal"}:                                              funcDecode,
 	{Path: "sigs.k8s.io/yaml", Name: "UnmarshalStrict"}:                                        funcDecode,
+	{Path: "go.yaml.in/yaml/v2", Name: "Unmarshal"}:                                            funcDecode,
+	{Path: "go.yaml.in/yaml/v2", Receiver: "Decoder", Name: "Decode"}:                          funcDecode,
+	{Path: "go.yaml.in/yaml/v3", Name: "Unmarshal"}:                                            funcDecode,
+	{Path: "go.yaml.in/yaml/v3", Receiver: "Decoder", Name: "Decode"}:                          funcDecode,
+	{Path: "go.yaml.in/yaml/v4", Name: "Unmarshal"}:                                            funcDecode,
+	{Path: "go.yaml.in/yaml/v4", Receiver: "Decoder", Name: "Decode"}:                          funcDecode,
 }
